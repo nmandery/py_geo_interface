@@ -2,8 +2,8 @@ use geo_types::{
     Coordinate, Geometry, GeometryCollection, Line, LineString, MultiLineString, MultiPoint,
     MultiPolygon, Point, Polygon,
 };
-use pyo3::types::{PyDict, PyTuple};
-use pyo3::{IntoPy, PyObject, PyResult, Python, ToPyObject};
+use pyo3::types::{PyDict, PyString, PyTuple};
+use pyo3::{intern, IntoPy, PyObject, PyResult, Python, ToPyObject};
 use std::iter::once;
 
 pub trait GeoAsPyDict {
@@ -29,7 +29,7 @@ impl GeoAsPyDict for Geometry<f64> {
 
 impl GeoAsPyDict for Point<f64> {
     fn geometry_as_pydict<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict> {
-        make_geom_dict(py, "Point", self.0.to_py(py))
+        make_geom_dict(py, intern!(py, "Point"), self.0.to_py(py))
     }
 }
 
@@ -37,7 +37,7 @@ impl GeoAsPyDict for MultiPoint<f64> {
     fn geometry_as_pydict<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict> {
         make_geom_dict(
             py,
-            "MultiPoint",
+            intern!(py, "MultiPoint"),
             PyTuple::new(py, self.0.iter().map(|pt| pt.0.to_py(py))).to_object(py),
         )
     }
@@ -45,7 +45,7 @@ impl GeoAsPyDict for MultiPoint<f64> {
 
 impl GeoAsPyDict for LineString<f64> {
     fn geometry_as_pydict<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict> {
-        make_geom_dict(py, "LineString", self.0.to_py(py))
+        make_geom_dict(py, intern!(py, "LineString"), self.0.to_py(py))
     }
 }
 
@@ -53,7 +53,7 @@ impl GeoAsPyDict for MultiLineString<f64> {
     fn geometry_as_pydict<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict> {
         make_geom_dict(
             py,
-            "MultiLineString",
+            intern!(py, "MultiLineString"),
             PyTuple::new(py, self.0.iter().map(|linestring| linestring.0.to_py(py))).to_object(py),
         )
     }
@@ -63,7 +63,7 @@ impl GeoAsPyDict for Line<f64> {
     fn geometry_as_pydict<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict> {
         make_geom_dict(
             py,
-            "LineString",
+            intern!(py, "LineString"),
             PyTuple::new(py, [self.start.to_py(py), self.end.to_py(py)]).to_object(py),
         )
     }
@@ -78,7 +78,11 @@ fn polygon_coordinates_to_pyobject(py: Python, polygon: &Polygon<f64>) -> PyObje
 
 impl GeoAsPyDict for Polygon<f64> {
     fn geometry_as_pydict<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict> {
-        make_geom_dict(py, "Polygon", polygon_coordinates_to_pyobject(py, self))
+        make_geom_dict(
+            py,
+            intern!(py, "Polygon"),
+            polygon_coordinates_to_pyobject(py, self),
+        )
     }
 }
 
@@ -86,7 +90,7 @@ impl GeoAsPyDict for MultiPolygon<f64> {
     fn geometry_as_pydict<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict> {
         make_geom_dict(
             py,
-            "MultiPolygon",
+            intern!(py, "MultiPolygon"),
             PyTuple::new(
                 py,
                 self.0
@@ -100,21 +104,21 @@ impl GeoAsPyDict for MultiPolygon<f64> {
 
 fn make_geom_dict<'py>(
     py: Python<'py>,
-    geom_type: &str,
+    geom_type: &'py PyString,
     coordinates: PyObject,
 ) -> PyResult<&'py PyDict> {
     let dict = PyDict::new(py);
-    dict.set_item("type", geom_type)?;
-    dict.set_item("coordinates", coordinates)?;
+    dict.set_item(intern!(py, "type"), geom_type)?;
+    dict.set_item(intern!(py, "coordinates"), coordinates)?;
     Ok(dict)
 }
 
 impl GeoAsPyDict for GeometryCollection<f64> {
     fn geometry_as_pydict<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict> {
         let dict = PyDict::new(py);
-        dict.set_item("type", "GeometryCollection")?;
+        dict.set_item(intern!(py, "type"), intern!(py, "GeometryCollection"))?;
         dict.set_item(
-            "geometries",
+            intern!(py, "geometries"),
             PyTuple::new(
                 py,
                 self.0
