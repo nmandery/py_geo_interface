@@ -80,6 +80,26 @@ impl From<Geometry<f64>> for GeoInterface {
     }
 }
 
+macro_rules! geometry_enum_from_impl {
+    ($geom_type:ty, $enum_variant_name:ident) => {
+        impl From<$geom_type> for GeoInterface {
+            fn from(g: $geom_type) -> Self {
+                GeoInterface(geo_types::Geometry::$enum_variant_name(g))
+            }
+        }
+    };
+}
+geometry_enum_from_impl!(geo_types::Point<f64>, Point);
+geometry_enum_from_impl!(geo_types::MultiPoint<f64>, MultiPoint);
+geometry_enum_from_impl!(geo_types::LineString<f64>, LineString);
+geometry_enum_from_impl!(geo_types::MultiLineString<f64>, MultiLineString);
+geometry_enum_from_impl!(geo_types::Polygon<f64>, Polygon);
+geometry_enum_from_impl!(geo_types::MultiPolygon<f64>, MultiPolygon);
+geometry_enum_from_impl!(geo_types::GeometryCollection<f64>, GeometryCollection);
+geometry_enum_from_impl!(geo_types::Rect<f64>, Rect);
+geometry_enum_from_impl!(geo_types::Line<f64>, Line);
+geometry_enum_from_impl!(geo_types::Triangle<f64>, Triangle);
+
 impl From<GeoInterface> for Geometry<f64> {
     fn from(gi: GeoInterface) -> Self {
         gi.0
