@@ -1,0 +1,12 @@
+[package]
+name = "py_geo_interface"
+version = "0.1.0"
+edition = "2021"
+license = "MIT/Apache-2.0"
+authors = [
+    "Nico Mandery <nico@nmandery.net>"
+]
+
+[dependencies]
+pyo3 = "0.16"
+geo-types = "0.7"
