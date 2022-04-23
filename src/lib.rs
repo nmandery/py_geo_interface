@@ -22,15 +22,51 @@
 //! }).unwrap();
 //! assert_eq!(geom.0, Geometry::Point(Point::new(5.0_f64, 3.0_f64)));
 //! ```
+//!
+//! Pass geometries from Rust to Python:
+//!
+//! ```rust
+//! use geo_types::{Geometry, Point};
+//! use pyo3::{prepare_freethreaded_python, Python};
+//! use pyo3::types::{PyDict, PyTuple};
+//! use pyo3::IntoPy;
+//! use py_geo_interface::GeoInterface;
+//!
+//! prepare_freethreaded_python();
+//!
+//! Python::with_gil(|py| {
+//!
+//!     let geom: GeoInterface = Geometry::Point(Point::new(10.6_f64, 23.3_f64)).into();
+//!     let mut locals = PyDict::new(py);
+//!     locals.set_item("geom", geom.into_py(py)).unwrap();
+//!
+//!     py.run(r#"
+//! assert geom.__geo_interface__["type"] == "Point"
+//! assert geom.__geo_interface__["coordinates"] == (10.6, 23.3)
+//! "#, None, Some(locals)).unwrap();
+//! });
+//! ```
 
 pub mod from_py;
+pub mod to_py;
 
+use crate::to_py::GeoAsPyDict;
 use from_py::AsGeometry;
 use geo_types::Geometry;
-use pyo3::{FromPyObject, PyAny, PyResult};
+use pyo3::prelude::*;
+use pyo3::types::PyDict;
 
 #[derive(Debug)]
+#[pyclass]
 pub struct GeoInterface(pub Geometry<f64>);
+
+#[pymethods]
+impl GeoInterface {
+    #[getter]
+    fn __geo_interface__<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict> {
+        self.0.geometry_as_pydict(py)
+    }
+}
 
 impl<'source> FromPyObject<'source> for GeoInterface {
     fn extract(ob: &'source PyAny) -> PyResult<Self> {

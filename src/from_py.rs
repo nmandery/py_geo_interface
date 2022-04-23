@@ -143,7 +143,7 @@ fn extract_geometry(dict: &PyDict, level: u8) -> PyResult<Geometry<f64>> {
                 |tuple| {
                     tuple
                         .iter()
-                        .map(|t| extract_polygon(t))
+                        .map(extract_polygon)
                         .collect::<PyResult<Vec<_>>>()
                 },
             )?))),
@@ -182,7 +182,7 @@ fn extract_linestrings(obj: &PyAny) -> PyResult<Vec<LineString<f64>>> {
 
 fn extract_polygon(obj: &PyAny) -> PyResult<Polygon<f64>> {
     let mut linestings = extract_linestrings(obj)?;
-    if linestings.len() == 0 {
+    if linestings.is_empty() {
         return Err(PyValueError::new_err("Polygons require at least one ring"));
     }
     let exterior = linestings.remove(0);
