@@ -4,15 +4,21 @@ use geo_types::{
 };
 use pyo3::exceptions::PyValueError;
 use pyo3::types::{PyDict, PyFloat, PyInt, PyList, PyString, PyTuple};
-use pyo3::{PyAny, PyErr, PyResult};
+use pyo3::{intern, PyAny, PyErr, PyResult};
 
 pub trait AsCoordinate {
+    /// Creates a `Coordinate<f64>` from `self`.
     fn as_coordinate(&self) -> PyResult<Coordinate<f64>>;
 }
 
 impl AsCoordinate for [&PyAny] {
     fn as_coordinate(&self) -> PyResult<Coordinate<f64>> {
-        check_length(self, 2)?;
+        if self.len() != 2 {
+            return Err(PyValueError::new_err(format!(
+                "Expected length of 2 values for coordinate, found {}",
+                self.len()
+            )));
+        }
         Ok((extract_as_float(self[0])?, extract_as_float(self[1])?).into())
     }
 }
@@ -63,6 +69,7 @@ impl AsCoordinate for PyList {
 }
 
 pub trait AsCoordinateVec {
+    /// Creates a `Vec<Coordinate<f64>>` from `self`.
     fn as_coordinate_vec(&self) -> PyResult<Vec<Coordinate<f64>>>;
 }
 
@@ -92,19 +99,8 @@ impl AsCoordinateVec for PyAny {
     }
 }
 
-fn check_length<T>(slice: &[T], required_length: usize) -> PyResult<()> {
-    if slice.len() != required_length {
-        Err(PyValueError::new_err(format!(
-            "Expected length of {}, found {}",
-            required_length,
-            slice.len()
-        )))
-    } else {
-        Ok(())
-    }
-}
-
 pub trait AsGeometry {
+    /// Creates a `Geometry<f64>` from `self`
     fn as_geometry(&self) -> PyResult<Geometry<f64>>;
 }
 
@@ -118,10 +114,10 @@ fn extract_geometry(dict: &PyDict, level: u8) -> PyResult<Geometry<f64>> {
     if level > 1 {
         Err(PyValueError::new_err("recursion level exceeded"))
     } else {
-        let geom_type = extract_geom_dict_value(dict, "type")?
+        let geom_type = extract_geom_dict_value(dict, intern!(dict.py(), "type"))?
             .downcast::<PyString>()?
             .extract::<String>()?;
-        let coordinates = || extract_geom_dict_value(dict, "coordinates");
+        let coordinates = || extract_geom_dict_value(dict, intern!(dict.py(), "coordinates"));
         match geom_type.as_str() {
             "Point" => Ok(Geometry::from(Point::from(coordinates()?.as_coordinate()?))),
             "MultiPoint" => Ok(Geometry::from(MultiPoint::from(
@@ -148,17 +144,20 @@ fn extract_geometry(dict: &PyDict, level: u8) -> PyResult<Geometry<f64>> {
                 },
             )?))),
             "GeometryCollection" => {
-                let geoms = tuple_map(extract_geom_dict_value(dict, "geometries")?, |tuple| {
-                    tuple
-                        .as_slice()
-                        .iter()
-                        .map(|obj| {
-                            obj.downcast::<PyDict>()
-                                .map_err(PyErr::from)
-                                .and_then(|obj_dict| extract_geometry(obj_dict, level + 1))
-                        })
-                        .collect::<Result<Vec<_>, _>>()
-                })?;
+                let geoms = tuple_map(
+                    extract_geom_dict_value(dict, intern!(dict.py(), "geometries"))?,
+                    |tuple| {
+                        tuple
+                            .as_slice()
+                            .iter()
+                            .map(|obj| {
+                                obj.downcast::<PyDict>()
+                                    .map_err(PyErr::from)
+                                    .and_then(|obj_dict| extract_geometry(obj_dict, level + 1))
+                            })
+                            .collect::<Result<Vec<_>, _>>()
+                    },
+                )?;
                 Ok(Geometry::GeometryCollection(GeometryCollection::new_from(
                     geoms,
                 )))
@@ -189,7 +188,7 @@ fn extract_polygon(obj: &PyAny) -> PyResult<Polygon<f64>> {
     Ok(Polygon::new(exterior, linestings))
 }
 
-fn extract_geom_dict_value<'a>(dict: &'a PyDict, key: &str) -> PyResult<&'a PyAny> {
+fn extract_geom_dict_value<'a>(dict: &'a PyDict, key: &PyString) -> PyResult<&'a PyAny> {
     if let Some(value) = dict.get_item(key) {
         Ok(value)
     } else {
@@ -203,7 +202,7 @@ fn extract_geom_dict_value<'a>(dict: &'a PyDict, key: &str) -> PyResult<&'a PyAn
 impl AsGeometry for PyAny {
     fn as_geometry(&self) -> PyResult<Geometry<f64>> {
         // search for and call __geo_interface__ if its present
-        if let Ok(geo_interface) = self.getattr("__geo_interface__") {
+        if let Ok(geo_interface) = self.getattr(intern!(self.py(), "__geo_interface__")) {
             if geo_interface.is_callable() {
                 geo_interface.call0()?
             } else {
