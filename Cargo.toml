@@ -12,9 +12,7 @@ authors = [
 categories = [
     "geo",
     "geospatial",
-    "gis",
     "geography",
-    "cpython",
     "pyo3",
     "python"
 ]
