@@ -9,7 +9,7 @@ homepage = "https://github.com/nmandery/py_geo_interface"
 authors = [
     "Nico Mandery <nico@nmandery.net>"
 ]
-categories = [
+keywords = [
     "geo",
     "geospatial",
     "geography",
