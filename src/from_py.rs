@@ -1,22 +1,107 @@
+use crate::PyCoordNum;
 use geo_types::{
     Coordinate, Geometry, GeometryCollection, LineString, MultiLineString, MultiPoint,
     MultiPolygon, Point, Polygon,
 };
+use num_traits::NumCast;
 use pyo3::exceptions::PyValueError;
 use pyo3::types::{PyDict, PyFloat, PyInt, PyList, PyString, PyTuple};
 use pyo3::{intern, PyAny, PyErr, PyResult};
+use std::any::type_name;
 
-pub trait AsCoordinate {
-    /// Creates a `Coordinate<f64>` from `self`.
-    fn as_coordinate(&self) -> PyResult<Coordinate<f64>>;
+pub trait AsCoordinate<T: PyCoordNum> {
+    /// Creates a `Coordinate<T>` from `self`.
+    fn as_coordinate(&self) -> PyResult<Coordinate<T>>;
 }
 
+pub trait ExtractFromPyFloat {
+    fn extract_from_pyfloat(pf: &PyFloat) -> PyResult<Self>
+    where
+        Self: Sized;
+}
+
+macro_rules! extract_from_pyfloat_float {
+    ($ftype:ty) => {
+        impl ExtractFromPyFloat for $ftype {
+            fn extract_from_pyfloat(pf: &PyFloat) -> PyResult<Self> {
+                pf.extract::<Self>()
+            }
+        }
+    };
+}
+extract_from_pyfloat_float!(f32);
+extract_from_pyfloat_float!(f64);
+
+macro_rules! extract_from_pyfloat_int {
+    ($ftype:ty) => {
+        impl ExtractFromPyFloat for $ftype {
+            fn extract_from_pyfloat(pf: &PyFloat) -> PyResult<Self> {
+                <Self as NumCast>::from(pf.extract::<f64>()?).ok_or_else(|| {
+                    PyValueError::new_err(format!(
+                        "Coordinate value can not be represented in {}",
+                        type_name::<Self>()
+                    ))
+                })
+            }
+        }
+    };
+}
+extract_from_pyfloat_int!(i8);
+extract_from_pyfloat_int!(i16);
+extract_from_pyfloat_int!(i32);
+extract_from_pyfloat_int!(i64);
+extract_from_pyfloat_int!(u8);
+extract_from_pyfloat_int!(u16);
+extract_from_pyfloat_int!(u32);
+extract_from_pyfloat_int!(u64);
+
+pub trait ExtractFromPyInt {
+    fn extract_from_pyint(pf: &PyInt) -> PyResult<Self>
+    where
+        Self: Sized;
+}
+
+macro_rules! extract_from_pyint_float {
+    ($ftype:ty) => {
+        impl ExtractFromPyInt for $ftype {
+            fn extract_from_pyint(pf: &PyInt) -> PyResult<Self> {
+                <Self as NumCast>::from(pf.extract::<i64>()?).ok_or_else(|| {
+                    PyValueError::new_err(format!(
+                        "Coordinate value can not be represented in {}",
+                        type_name::<Self>()
+                    ))
+                })
+            }
+        }
+    };
+}
+extract_from_pyint_float!(f32);
+extract_from_pyint_float!(f64);
+
+macro_rules! extract_from_pyint_int {
+    ($ftype:ty) => {
+        impl ExtractFromPyInt for $ftype {
+            fn extract_from_pyint(pf: &PyInt) -> PyResult<Self> {
+                pf.extract::<Self>()
+            }
+        }
+    };
+}
+extract_from_pyint_int!(i8);
+extract_from_pyint_int!(i16);
+extract_from_pyint_int!(i32);
+extract_from_pyint_int!(i64);
+extract_from_pyint_int!(u8);
+extract_from_pyint_int!(u16);
+extract_from_pyint_int!(u32);
+extract_from_pyint_int!(u64);
+
 #[inline]
-fn extract_as_float(obj: &PyAny) -> PyResult<f64> {
+fn extract_pycoordnum<T: PyCoordNum>(obj: &PyAny) -> PyResult<T> {
     if obj.is_instance_of::<PyFloat>()? {
-        obj.downcast::<PyFloat>()?.extract::<f64>()
+        T::extract_from_pyfloat(obj.downcast::<PyFloat>()?)
     } else if obj.is_instance_of::<PyInt>()? {
-        Ok(obj.downcast::<PyInt>()?.extract::<i64>()? as f64)
+        T::extract_from_pyint(obj.downcast::<PyInt>()?)
     } else {
         Err(PyValueError::new_err(
             "coordinate values must be either float or int",
@@ -25,9 +110,9 @@ fn extract_as_float(obj: &PyAny) -> PyResult<f64> {
 }
 
 #[inline]
-fn tuple_map<'a, T, F>(obj: &'a PyAny, map_fn: F) -> PyResult<T>
+fn tuple_map<'a, O, F>(obj: &'a PyAny, map_fn: F) -> PyResult<O>
 where
-    F: Fn(&'a PyTuple) -> PyResult<T>,
+    F: Fn(&'a PyTuple) -> PyResult<O>,
 {
     if obj.is_instance_of::<PyTuple>()? {
         map_fn(obj.downcast::<PyTuple>()?)
@@ -38,14 +123,14 @@ where
     }
 }
 
-impl AsCoordinate for PyAny {
-    fn as_coordinate(&self) -> PyResult<Coordinate<f64>> {
+impl<T: PyCoordNum> AsCoordinate<T> for PyAny {
+    fn as_coordinate(&self) -> PyResult<Coordinate<T>> {
         tuple_map(self, |tuple| tuple.as_coordinate())
     }
 }
 
-impl AsCoordinate for PyTuple {
-    fn as_coordinate(&self) -> PyResult<Coordinate<f64>> {
+impl<T: PyCoordNum> AsCoordinate<T> for PyTuple {
+    fn as_coordinate(&self) -> PyResult<Coordinate<T>> {
         if self.len() != 2 {
             return Err(PyValueError::new_err(format!(
                 "Expected length of 2 values for coordinate, found {}",
@@ -53,53 +138,53 @@ impl AsCoordinate for PyTuple {
             )));
         }
         let mut tuple_iter = self.iter();
-        let x = extract_as_float(tuple_iter.next().unwrap())?;
-        let y = extract_as_float(tuple_iter.next().unwrap())?;
+        let x = extract_pycoordnum(tuple_iter.next().unwrap())?;
+        let y = extract_pycoordnum(tuple_iter.next().unwrap())?;
         Ok((x, y).into())
     }
 }
 
-impl AsCoordinate for PyList {
-    fn as_coordinate(&self) -> PyResult<Coordinate<f64>> {
+impl<T: PyCoordNum> AsCoordinate<T> for PyList {
+    fn as_coordinate(&self) -> PyResult<Coordinate<T>> {
         self.as_sequence().tuple()?.as_coordinate()
     }
 }
 
-pub trait AsCoordinateVec {
-    /// Creates a `Vec<Coordinate<f64>>` from `self`.
-    fn as_coordinate_vec(&self) -> PyResult<Vec<Coordinate<f64>>>;
+pub trait AsCoordinateVec<T: PyCoordNum> {
+    /// Creates a `Vec<Coordinate<T>>` from `self`.
+    fn as_coordinate_vec(&self) -> PyResult<Vec<Coordinate<T>>>;
 }
 
-impl AsCoordinateVec for PyTuple {
-    fn as_coordinate_vec(&self) -> PyResult<Vec<Coordinate<f64>>> {
+impl<T: PyCoordNum> AsCoordinateVec<T> for PyTuple {
+    fn as_coordinate_vec(&self) -> PyResult<Vec<Coordinate<T>>> {
         self.iter().map(|tuple| tuple.as_coordinate()).collect()
     }
 }
 
-impl AsCoordinateVec for PyList {
-    fn as_coordinate_vec(&self) -> PyResult<Vec<Coordinate<f64>>> {
+impl<T: PyCoordNum> AsCoordinateVec<T> for PyList {
+    fn as_coordinate_vec(&self) -> PyResult<Vec<Coordinate<T>>> {
         self.as_sequence().tuple()?.as_coordinate_vec()
     }
 }
 
-impl AsCoordinateVec for PyAny {
-    fn as_coordinate_vec(&self) -> PyResult<Vec<Coordinate<f64>>> {
+impl<T: PyCoordNum> AsCoordinateVec<T> for PyAny {
+    fn as_coordinate_vec(&self) -> PyResult<Vec<Coordinate<T>>> {
         tuple_map(self, |tuple| tuple.as_coordinate_vec())
     }
 }
 
-pub trait AsGeometry {
-    /// Creates a `Geometry<f64>` from `self`
-    fn as_geometry(&self) -> PyResult<Geometry<f64>>;
+pub trait AsGeometry<T: PyCoordNum> {
+    /// Creates a `Geometry<T>` from `self`
+    fn as_geometry(&self) -> PyResult<Geometry<T>>;
 }
 
-impl AsGeometry for PyDict {
-    fn as_geometry(&self) -> PyResult<Geometry<f64>> {
+impl<T: PyCoordNum> AsGeometry<T> for PyDict {
+    fn as_geometry(&self) -> PyResult<Geometry<T>> {
         extract_geometry(self, 0)
     }
 }
 
-fn extract_geometry(dict: &PyDict, level: u8) -> PyResult<Geometry<f64>> {
+fn extract_geometry<T: PyCoordNum>(dict: &PyDict, level: u8) -> PyResult<Geometry<T>> {
     if level > 1 {
         Err(PyValueError::new_err("recursion level exceeded"))
     } else {
@@ -158,7 +243,7 @@ fn extract_geometry(dict: &PyDict, level: u8) -> PyResult<Geometry<f64>> {
     }
 }
 
-fn extract_linestrings(obj: &PyAny) -> PyResult<Vec<LineString<f64>>> {
+fn extract_linestrings<T: PyCoordNum>(obj: &PyAny) -> PyResult<Vec<LineString<T>>> {
     tuple_map(obj, |tuple| {
         tuple
             .iter()
@@ -167,7 +252,7 @@ fn extract_linestrings(obj: &PyAny) -> PyResult<Vec<LineString<f64>>> {
     })
 }
 
-fn extract_polygon(obj: &PyAny) -> PyResult<Polygon<f64>> {
+fn extract_polygon<T: PyCoordNum>(obj: &PyAny) -> PyResult<Polygon<T>> {
     let mut linestings = extract_linestrings(obj)?;
     if linestings.is_empty() {
         return Err(PyValueError::new_err("Polygons require at least one ring"));
@@ -187,8 +272,8 @@ fn extract_geom_dict_value<'a>(dict: &'a PyDict, key: &PyString) -> PyResult<&'a
     }
 }
 
-impl AsGeometry for PyAny {
-    fn as_geometry(&self) -> PyResult<Geometry<f64>> {
+impl<T: PyCoordNum> AsGeometry<T> for PyAny {
+    fn as_geometry(&self) -> PyResult<Geometry<T>> {
         // search for and call __geo_interface__ if its present
         if let Ok(geo_interface) = self.getattr(intern!(self.py(), "__geo_interface__")) {
             if geo_interface.is_callable() {
@@ -223,20 +308,31 @@ mod tests {
         prepare_freethreaded_python();
         Python::with_gil(|py| {
             let tuple = py.eval("(1.0, 2.0)", None, None).unwrap();
-            let c = tuple.as_coordinate().unwrap();
+            let c: Coordinate<f64> = tuple.as_coordinate().unwrap();
             assert_eq!(c.x, 1.0);
             assert_eq!(c.y, 2.0);
         });
     }
 
     #[test]
-    fn coordinate_from_pytuple_with_ints() {
+    fn coordinate_from_pytuple_cast_ints() {
         prepare_freethreaded_python();
         Python::with_gil(|py| {
             let tuple = py.eval("(1, 2)", None, None).unwrap();
-            let c = tuple.as_coordinate().unwrap();
+            let c: Coordinate<f64> = tuple.as_coordinate().unwrap();
             assert_eq!(c.x, 1.0);
             assert_eq!(c.y, 2.0);
+        });
+    }
+
+    #[test]
+    fn coordinate_from_pytuple_to_ints() {
+        prepare_freethreaded_python();
+        Python::with_gil(|py| {
+            let tuple = py.eval("(1, 2)", None, None).unwrap();
+            let c: Coordinate<i32> = tuple.as_coordinate().unwrap();
+            assert_eq!(c.x, 1);
+            assert_eq!(c.y, 2);
         });
     }
 
@@ -245,7 +341,7 @@ mod tests {
         prepare_freethreaded_python();
         Python::with_gil(|py| {
             let list = py.eval("[1.0, 2.0]", None, None).unwrap();
-            let c = list.as_coordinate().unwrap();
+            let c: Coordinate<f64> = list.as_coordinate().unwrap();
             assert_eq!(c.x, 1.0);
             assert_eq!(c.y, 2.0);
         });
@@ -256,7 +352,7 @@ mod tests {
         prepare_freethreaded_python();
         Python::with_gil(|py| {
             let list = py.eval("[[1.0, 2.0], (3.0, 4.)]", None, None).unwrap();
-            let coords = list.as_coordinate_vec().unwrap();
+            let coords: Vec<Coordinate<f64>> = list.as_coordinate_vec().unwrap();
             assert_eq!(coords.len(), 2);
             assert_eq!(coords[0].x, 1.0);
             assert_eq!(coords[0].y, 2.0);

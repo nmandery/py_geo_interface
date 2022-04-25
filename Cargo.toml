@@ -1,6 +1,6 @@
 [package]
 name = "py_geo_interface"
-description = "Exchange vector geometries between Rust and Python using pyo3 and Pythons `__geo_interface__` protocol."
+description = "Exchange vector geometries between Rust and Python using pyo3 and Pythons __geo_interface__ protocol."
 version = "0.1.1"
 edition = "2021"
 license = "MIT/Apache-2.0"
@@ -17,8 +17,22 @@ keywords = [
     "python"
 ]
 
+[features]
+default = ["f64"]
+f64 = []
+f32 = []
+i8 = []
+i16 = []
+i32 = []
+i64 = []
+u8 = []
+u16 = []
+u32 = []
+u64 = []
+
 [dependencies]
 geo-types = "0.7"
+num-traits = "0.2"
 
 [dependencies.pyo3]
 version = "0.16"
