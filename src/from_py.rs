@@ -11,18 +11,6 @@ pub trait AsCoordinate {
     fn as_coordinate(&self) -> PyResult<Coordinate<f64>>;
 }
 
-impl AsCoordinate for [&PyAny] {
-    fn as_coordinate(&self) -> PyResult<Coordinate<f64>> {
-        if self.len() != 2 {
-            return Err(PyValueError::new_err(format!(
-                "Expected length of 2 values for coordinate, found {}",
-                self.len()
-            )));
-        }
-        Ok((extract_as_float(self[0])?, extract_as_float(self[1])?).into())
-    }
-}
-
 #[inline]
 fn extract_as_float(obj: &PyAny) -> PyResult<f64> {
     if obj.is_instance_of::<PyFloat>()? {
@@ -58,13 +46,22 @@ impl AsCoordinate for PyAny {
 
 impl AsCoordinate for PyTuple {
     fn as_coordinate(&self) -> PyResult<Coordinate<f64>> {
-        self.as_slice().as_coordinate()
+        if self.len() != 2 {
+            return Err(PyValueError::new_err(format!(
+                "Expected length of 2 values for coordinate, found {}",
+                self.len()
+            )));
+        }
+        let mut tuple_iter = self.iter();
+        let x = extract_as_float(tuple_iter.next().unwrap())?;
+        let y = extract_as_float(tuple_iter.next().unwrap())?;
+        Ok((x, y).into())
     }
 }
 
 impl AsCoordinate for PyList {
     fn as_coordinate(&self) -> PyResult<Coordinate<f64>> {
-        self.as_sequence().tuple()?.as_slice().as_coordinate()
+        self.as_sequence().tuple()?.as_coordinate()
     }
 }
 
@@ -73,17 +70,9 @@ pub trait AsCoordinateVec {
     fn as_coordinate_vec(&self) -> PyResult<Vec<Coordinate<f64>>>;
 }
 
-impl AsCoordinateVec for [&PyAny] {
-    fn as_coordinate_vec(&self) -> PyResult<Vec<Coordinate<f64>>> {
-        self.iter()
-            .map(|obj| obj.as_coordinate())
-            .collect::<PyResult<Vec<_>>>()
-    }
-}
-
 impl AsCoordinateVec for PyTuple {
     fn as_coordinate_vec(&self) -> PyResult<Vec<Coordinate<f64>>> {
-        self.as_slice().as_coordinate_vec()
+        self.iter().map(|tuple| tuple.as_coordinate()).collect()
     }
 }
 
@@ -148,7 +137,6 @@ fn extract_geometry(dict: &PyDict, level: u8) -> PyResult<Geometry<f64>> {
                     extract_geom_dict_value(dict, intern!(dict.py(), "geometries"))?,
                     |tuple| {
                         tuple
-                            .as_slice()
                             .iter()
                             .map(|obj| {
                                 obj.downcast::<PyDict>()

@@ -11,6 +11,7 @@ The `__geo_interface__` protocol is implemented by most popular geospatial pytho
 
 For usage examples see the [documentation](https://docs.rs/py_geo_interface). 
 
+[Changelog](./CHANGES.md)
 
 ### License
 
