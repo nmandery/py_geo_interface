@@ -4,13 +4,20 @@
 //!
 //! The main struct of this crate is [`GeoInterface`]. This the docs there for usage examples.
 //!
+//! ## Features
+//!
 //! As rust types exposed to python may not have generic type parameters, there are multiple implementations of the `GeoInterface` type based
 //! on different types for the coordinate values. The default is `f64`, other types can be enabled using the `f32`, `u8`, `u16`, `u32`, `u64`,
 //! `i8`, `i16`, `i32` and `i64` feature gates. The implementation are then available as `py_geo_interface::datatypes::[datatype]::GeoInterface`.
 //! The default and probably most common used `f64`-variant is also available as `py_geo_interface::GeoInterface`.
 //!
+//! The `wkb` feature adds support for exchanging geometries using the Well-Known-Binary format. The `wkb`-property of `shapely`
+//! geometries will be used when found. Additionally, the `GeoInterface`-type exposed to python will have a `wkb`-property
+//! itself. WKB is only supported for the `f64`-variant of the `GeoInterface`, the feature is disabled per default.
 //!
-//! ## Read python types implementing `__geo_interface__` into `geo-types`:
+//! ## Examples
+//!
+//! ### Read python types implementing `__geo_interface__` into `geo-types`:
 //!
 //! #[include]
 //! ```rust
@@ -37,7 +44,7 @@
 //! assert_eq!(geom.0, Geometry::Point(Point::new(5.0_f64, 3.0_f64)));
 //! ```
 //!
-//! ## Pass geometries from Rust to Python:
+//! ### Pass geometries from Rust to Python:
 //!
 //! ```rust
 //! use geo_types::{Geometry, Point};
@@ -65,12 +72,31 @@ pub mod datatypes;
 pub mod from_py;
 pub mod to_py;
 
+#[cfg(feature = "wkb")]
+pub mod wkb;
+
 use crate::from_py::{ExtractFromPyFloat, ExtractFromPyInt};
+#[cfg(feature = "wkb")]
+use crate::wkb::WKBSupport;
 use geo_types::CoordNum;
 use pyo3::prelude::*;
 
+#[cfg(feature = "wkb")]
+pub trait PyCoordNum:
+    CoordNum + IntoPy<Py<PyAny>> + ExtractFromPyFloat + ExtractFromPyInt + WKBSupport
+{
+}
+
+#[cfg(not(feature = "wkb"))]
 pub trait PyCoordNum: CoordNum + IntoPy<Py<PyAny>> + ExtractFromPyFloat + ExtractFromPyInt {}
 
+#[cfg(feature = "wkb")]
+impl<T: CoordNum + IntoPy<Py<PyAny>> + ExtractFromPyFloat + ExtractFromPyInt + WKBSupport>
+    PyCoordNum for T
+{
+}
+
+#[cfg(not(feature = "wkb"))]
 impl<T: CoordNum + IntoPy<Py<PyAny>> + ExtractFromPyFloat + ExtractFromPyInt> PyCoordNum for T {}
 
 #[cfg(feature = "f64")]

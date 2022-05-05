@@ -29,6 +29,7 @@ u8 = []
 u16 = []
 u32 = []
 u64 = []
+wkb = ["dep:geozero"]
 
 [dependencies]
 geo-types = "0.7"
@@ -39,3 +40,9 @@ version = "0.16"
 features = [
     #"abi3"
 ]
+
+[dependencies.geozero]
+version = "0.9"
+default-features = false
+features = ["with-geo", "with-wkb"]
+optional = true
