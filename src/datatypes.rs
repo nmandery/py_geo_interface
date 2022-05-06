@@ -17,6 +17,14 @@ macro_rules! dt_mod {
                 fn __geo_interface__<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict> {
                     self.0.as_geointerface_pydict(py)
                 }
+
+                #[cfg(feature = "wkb")]
+                #[getter]
+                fn wkb<'py>(&self, py: Python<'py>) -> PyResult<&'py pyo3::types::PyBytes> {
+                    use crate::wkb::WKBSupport;
+                    let wkb_bytes = <$coord_type>::geometry_to_wkb(&self.0)?;
+                    Ok(pyo3::types::PyBytes::new(py, &wkb_bytes))
+                }
             }
 
             impl<'source> FromPyObject<'source> for GeoInterface {

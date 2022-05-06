@@ -274,19 +274,33 @@ fn extract_geom_dict_value<'a>(dict: &'a PyDict, key: &PyString) -> PyResult<&'a
 
 impl<T: PyCoordNum> AsGeometry<T> for PyAny {
     fn as_geometry(&self) -> PyResult<Geometry<T>> {
-        // search for and call __geo_interface__ if its present
-        if let Ok(geo_interface) = self.getattr(intern!(self.py(), "__geo_interface__")) {
-            if geo_interface.is_callable() {
-                geo_interface.call0()?
-            } else {
-                geo_interface
-            }
-            .downcast::<PyDict>()?
-            .as_geometry()
+        #[cfg(feature = "wkb")]
+        if let Some(geom) = T::read_wkb_property(self)? {
+            return Ok(geom);
+        }
+
+        if let Some(geom) = read_geointerface(self)? {
+            Ok(geom)
         } else {
-            // fallback to attempt to access as dict
+            // fallback and attempt to access as dict
             self.downcast::<PyDict>()?.as_geometry()
         }
+    }
+}
+
+/// search for and call __geo_interface__ if its present
+fn read_geointerface<T: PyCoordNum>(value: &PyAny) -> PyResult<Option<Geometry<T>>> {
+    if let Ok(geo_interface) = value.getattr(intern!(value.py(), "__geo_interface__")) {
+        let geom = if geo_interface.is_callable() {
+            geo_interface.call0()?
+        } else {
+            geo_interface
+        }
+        .downcast::<PyDict>()?
+        .as_geometry()?;
+        Ok(Some(geom))
+    } else {
+        Ok(None)
     }
 }
 

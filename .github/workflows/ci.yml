@@ -37,7 +37,17 @@ jobs:
           command: clippy
           args: --all-targets
 
-      - name: Test with cargo
+      - name: Install Python dependencies
+        run: |
+          pip install shapely
+
+      - name: Test with cargo - default features
+        uses: actions-rs/cargo@v1.0.1
+        with:
+          command: test
+          toolchain: stable
+
+      - name: Test with cargo - all features
         uses: actions-rs/cargo@v1.0.1
         with:
           command: test
