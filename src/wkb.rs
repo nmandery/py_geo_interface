@@ -84,7 +84,7 @@ impl WKBSupport for f64 {
 #[cfg(all(test, feature = "f64"))]
 mod tests {
     use crate::from_py::AsGeometry;
-    use crate::GeoInterface;
+    use crate::GeometryInterface;
     use geo_types::{Geometry, Point};
     use pyo3::types::PyDict;
     use pyo3::{prepare_freethreaded_python, IntoPy, Python};
@@ -121,11 +121,11 @@ class Something:
     }
 
     #[test]
-    fn geointerface_wkb_property() {
+    fn geometryinterface_wkb_property() {
         prepare_freethreaded_python();
 
         Python::with_gil(|py| {
-            let geom: GeoInterface = Point::new(2.0_f64, 4.0_f64).into();
+            let geom: GeometryInterface = Point::new(2.0_f64, 4.0_f64).into();
             let locals = PyDict::new(py);
             locals.set_item("geom", geom.into_py(py)).unwrap();
 

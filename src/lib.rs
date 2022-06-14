@@ -2,18 +2,18 @@
 //!
 //! The `__geo_interface__` protocol is implemented by most popular geospatial python modules like `shapely`, `geojson`, `geopandas`, ....
 //!
-//! The main struct of this crate is [`GeoInterface`]. This the docs there for usage examples.
+//! The main struct of this crate is [`GeometryInterface`]. This the docs there for usage examples.
 //!
 //! ## Features
 //!
-//! As rust types exposed to python may not have generic type parameters, there are multiple implementations of the `GeoInterface` type based
+//! As rust types exposed to python may not have generic type parameters, there are multiple implementations of the `GeometryInterface` type based
 //! on different types for the coordinate values. The default is `f64`, other types can be enabled using the `f32`, `u8`, `u16`, `u32`, `u64`,
-//! `i8`, `i16`, `i32` and `i64` feature gates. The implementation are then available as `py_geo_interface::datatypes::[datatype]::GeoInterface`.
-//! The default and probably most common used `f64`-variant is also available as `py_geo_interface::GeoInterface`.
+//! `i8`, `i16`, `i32` and `i64` feature gates. The implementation are then available as `py_geo_interface::wrappers::[datatype]::GeometryInterface`.
+//! The default and probably most common used `f64`-variant is also available as `py_geo_interface::GeometryInterface`.
 //!
 //! The `wkb` feature adds support for exchanging geometries using the Well-Known-Binary format. The `wkb`-property of `shapely`
-//! geometries will be used when found. Additionally, the `GeoInterface`-type exposed to python will have a `wkb`-property
-//! itself. WKB is only supported for the `f64`-variant of the `GeoInterface`, the feature is disabled per default.
+//! geometries will be used when found. Additionally, the `GeometryInterface`-type exposed to python will have a `wkb`-property
+//! itself. WKB is only supported for the `f64`-variant of the `GeometryInterface`, the feature is disabled per default.
 //!
 //! ## Examples
 //!
@@ -23,7 +23,7 @@
 //! ```rust
 //! use geo_types::{Geometry, Point};
 //! use pyo3::{prepare_freethreaded_python, Python};
-//! use py_geo_interface::GeoInterface;
+//! use py_geo_interface::GeometryInterface;
 //!
 //! prepare_freethreaded_python();
 //!
@@ -39,7 +39,7 @@
 //! "#, None, None).unwrap();
 //!
 //!     // create an instance of the class and extract the geometry
-//!     py.eval(r#"Something()"#, None, None)?.extract::<GeoInterface>()
+//!     py.eval(r#"Something()"#, None, None)?.extract::<GeometryInterface>()
 //! }).unwrap();
 //! assert_eq!(geom.0, Geometry::Point(Point::new(5.0_f64, 3.0_f64)));
 //! ```
@@ -51,13 +51,13 @@
 //! use pyo3::{prepare_freethreaded_python, Python};
 //! use pyo3::types::{PyDict, PyTuple};
 //! use pyo3::IntoPy;
-//! use py_geo_interface::GeoInterface;
+//! use py_geo_interface::GeometryInterface;
 //!
 //! prepare_freethreaded_python();
 //!
 //! Python::with_gil(|py| {
 //!
-//!     let geom: GeoInterface = Point::new(10.6_f64, 23.3_f64).into();
+//!     let geom: GeometryInterface = Point::new(10.6_f64, 23.3_f64).into();
 //!     let mut locals = PyDict::new(py);
 //!     locals.set_item("geom", geom.into_py(py)).unwrap();
 //!
@@ -68,9 +68,9 @@
 //! });
 //! ```
 
-pub mod datatypes;
 pub mod from_py;
 pub mod to_py;
+pub mod wrappers;
 
 #[cfg(feature = "wkb")]
 pub mod wkb;
@@ -100,4 +100,4 @@ impl<T: CoordNum + IntoPy<Py<PyAny>> + ExtractFromPyFloat + ExtractFromPyInt + W
 impl<T: CoordNum + IntoPy<Py<PyAny>> + ExtractFromPyFloat + ExtractFromPyInt> PyCoordNum for T {}
 
 #[cfg(feature = "f64")]
-pub use crate::datatypes::f64::GeoInterface;
+pub use crate::wrappers::f64::GeometryInterface;
