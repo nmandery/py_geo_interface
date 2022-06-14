@@ -6,6 +6,7 @@
   geometries will be used. Additionally, the `GeometryInterface`-type exposed to python will have a `wkb`-property
   itself. This is only supported for the `f64` variant of the `GeoInterface`.
 * Rename `GeoInterface` struct to `GeometryInterface` to distinguish the provided geometry support from geo_interface features and featurecollections.
+* Simplify lifetimes and rename `AsGeoInterfacePyDict` to `AsGeoInterface`.
 
 ## 0.2.0
 

@@ -2,9 +2,8 @@ macro_rules! dt_mod {
     ($coord_type:ty, $mod_name:ident) => {
         pub mod $mod_name {
             use crate::from_py::AsGeometry;
-            use crate::to_py::AsGeoInterfacePyDict;
+            use crate::to_py::AsGeoInterface;
             use pyo3::prelude::*;
-            use pyo3::types::PyDict;
 
             /// Exchanges vector geometries between Rust and Python using [pyo3](https://pyo3.rs) and [Pythons `__geo_interface__` protocol](https://gist.github.com/sgillies/2217756).
             #[derive(Debug)]
@@ -14,8 +13,8 @@ macro_rules! dt_mod {
             #[pymethods]
             impl GeometryInterface {
                 #[getter]
-                fn __geo_interface__<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict> {
-                    self.0.as_geointerface_pydict(py)
+                fn __geo_interface__(&self, py: Python) -> PyResult<PyObject> {
+                    self.0.as_geointerface_pyobject(py)
                 }
 
                 #[cfg(feature = "wkb")]

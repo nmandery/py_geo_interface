@@ -8,45 +8,45 @@ use pyo3::{intern, PyObject, PyResult, Python, ToPyObject};
 use std::iter::once;
 
 /// Convert `self` to a Python dictionary reflecting the structure of a `__geo_interface__` python dict.
-pub trait AsGeoInterfacePyDict {
-    fn as_geointerface_pydict<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict>;
+pub trait AsGeoInterface {
+    fn as_geointerface_pyobject(&self, py: Python) -> PyResult<PyObject>;
 }
 
-impl<T> AsGeoInterfacePyDict for Geometry<T>
+impl<T> AsGeoInterface for Geometry<T>
 where
     T: PyCoordNum,
 {
-    fn as_geointerface_pydict<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict> {
+    fn as_geointerface_pyobject(&self, py: Python) -> PyResult<PyObject> {
         match self {
-            Geometry::Point(g) => g.as_geointerface_pydict(py),
-            Geometry::Line(g) => g.as_geointerface_pydict(py),
-            Geometry::LineString(g) => g.as_geointerface_pydict(py),
-            Geometry::Polygon(g) => g.as_geointerface_pydict(py),
-            Geometry::MultiPoint(g) => g.as_geointerface_pydict(py),
-            Geometry::MultiLineString(g) => g.as_geointerface_pydict(py),
-            Geometry::MultiPolygon(g) => g.as_geointerface_pydict(py),
-            Geometry::GeometryCollection(g) => g.as_geointerface_pydict(py),
-            Geometry::Rect(g) => g.to_polygon().as_geointerface_pydict(py),
-            Geometry::Triangle(g) => g.to_polygon().as_geointerface_pydict(py),
+            Geometry::Point(g) => g.as_geointerface_pyobject(py),
+            Geometry::Line(g) => g.as_geointerface_pyobject(py),
+            Geometry::LineString(g) => g.as_geointerface_pyobject(py),
+            Geometry::Polygon(g) => g.as_geointerface_pyobject(py),
+            Geometry::MultiPoint(g) => g.as_geointerface_pyobject(py),
+            Geometry::MultiLineString(g) => g.as_geointerface_pyobject(py),
+            Geometry::MultiPolygon(g) => g.as_geointerface_pyobject(py),
+            Geometry::GeometryCollection(g) => g.as_geointerface_pyobject(py),
+            Geometry::Rect(g) => g.to_polygon().as_geointerface_pyobject(py),
+            Geometry::Triangle(g) => g.to_polygon().as_geointerface_pyobject(py),
         }
     }
 }
 
-impl<T> AsGeoInterfacePyDict for Point<T>
+impl<T> AsGeoInterface for Point<T>
 where
     T: PyCoordNum,
 {
-    fn as_geointerface_pydict<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict> {
-        make_geom_dict(py, intern!(py, "Point"), self.0.to_py(py))
+    fn as_geointerface_pyobject(&self, py: Python) -> PyResult<PyObject> {
+        make_geom_pyobject(py, intern!(py, "Point"), self.0.to_py(py))
     }
 }
 
-impl<T> AsGeoInterfacePyDict for MultiPoint<T>
+impl<T> AsGeoInterface for MultiPoint<T>
 where
     T: PyCoordNum,
 {
-    fn as_geointerface_pydict<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict> {
-        make_geom_dict(
+    fn as_geointerface_pyobject(&self, py: Python) -> PyResult<PyObject> {
+        make_geom_pyobject(
             py,
             intern!(py, "MultiPoint"),
             PyTuple::new(py, self.0.iter().map(|pt| pt.0.to_py(py))).to_object(py),
@@ -54,21 +54,21 @@ where
     }
 }
 
-impl<T> AsGeoInterfacePyDict for LineString<T>
+impl<T> AsGeoInterface for LineString<T>
 where
     T: PyCoordNum,
 {
-    fn as_geointerface_pydict<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict> {
-        make_geom_dict(py, intern!(py, "LineString"), self.0.to_py(py))
+    fn as_geointerface_pyobject(&self, py: Python) -> PyResult<PyObject> {
+        make_geom_pyobject(py, intern!(py, "LineString"), self.0.to_py(py))
     }
 }
 
-impl<T> AsGeoInterfacePyDict for MultiLineString<T>
+impl<T> AsGeoInterface for MultiLineString<T>
 where
     T: PyCoordNum,
 {
-    fn as_geointerface_pydict<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict> {
-        make_geom_dict(
+    fn as_geointerface_pyobject(&self, py: Python) -> PyResult<PyObject> {
+        make_geom_pyobject(
             py,
             intern!(py, "MultiLineString"),
             PyTuple::new(py, self.0.iter().map(|linestring| linestring.0.to_py(py))).to_object(py),
@@ -76,12 +76,12 @@ where
     }
 }
 
-impl<T> AsGeoInterfacePyDict for Line<T>
+impl<T> AsGeoInterface for Line<T>
 where
     T: PyCoordNum,
 {
-    fn as_geointerface_pydict<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict> {
-        make_geom_dict(
+    fn as_geointerface_pyobject(&self, py: Python) -> PyResult<PyObject> {
+        make_geom_pyobject(
             py,
             intern!(py, "LineString"),
             PyTuple::new(py, [self.start.to_py(py), self.end.to_py(py)]).to_object(py),
@@ -99,12 +99,12 @@ where
     PyTuple::new(py, linestring_objs).to_object(py)
 }
 
-impl<T> AsGeoInterfacePyDict for Polygon<T>
+impl<T> AsGeoInterface for Polygon<T>
 where
     T: PyCoordNum,
 {
-    fn as_geointerface_pydict<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict> {
-        make_geom_dict(
+    fn as_geointerface_pyobject(&self, py: Python) -> PyResult<PyObject> {
+        make_geom_pyobject(
             py,
             intern!(py, "Polygon"),
             polygon_coordinates_to_pyobject(py, self),
@@ -112,12 +112,12 @@ where
     }
 }
 
-impl<T> AsGeoInterfacePyDict for MultiPolygon<T>
+impl<T> AsGeoInterface for MultiPolygon<T>
 where
     T: PyCoordNum,
 {
-    fn as_geointerface_pydict<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict> {
-        make_geom_dict(
+    fn as_geointerface_pyobject(&self, py: Python) -> PyResult<PyObject> {
+        make_geom_pyobject(
             py,
             intern!(py, "MultiPolygon"),
             PyTuple::new(
@@ -131,22 +131,22 @@ where
     }
 }
 
-fn make_geom_dict<'py>(
+fn make_geom_pyobject<'py>(
     py: Python<'py>,
     geom_type: &'py PyString,
     coordinates: PyObject,
-) -> PyResult<&'py PyDict> {
+) -> PyResult<PyObject> {
     let dict = PyDict::new(py);
     dict.set_item(intern!(py, "type"), geom_type)?;
     dict.set_item(intern!(py, "coordinates"), coordinates)?;
-    Ok(dict)
+    Ok(dict.to_object(py))
 }
 
-impl<T> AsGeoInterfacePyDict for GeometryCollection<T>
+impl<T> AsGeoInterface for GeometryCollection<T>
 where
     T: PyCoordNum,
 {
-    fn as_geointerface_pydict<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict> {
+    fn as_geointerface_pyobject(&self, py: Python) -> PyResult<PyObject> {
         let dict = PyDict::new(py);
         dict.set_item(intern!(py, "type"), intern!(py, "GeometryCollection"))?;
         dict.set_item(
@@ -155,11 +155,11 @@ where
                 py,
                 self.0
                     .iter()
-                    .map(|geom| geom.as_geointerface_pydict(py))
+                    .map(|geom| geom.as_geointerface_pyobject(py))
                     .collect::<PyResult<Vec<_>>>()?,
             ),
         )?;
-        Ok(dict)
+        Ok(dict.to_object(py))
     }
 }
 
