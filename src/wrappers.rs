@@ -2,20 +2,19 @@ macro_rules! dt_mod {
     ($coord_type:ty, $mod_name:ident) => {
         pub mod $mod_name {
             use crate::from_py::AsGeometry;
-            use crate::to_py::AsGeoInterfacePyDict;
+            use crate::to_py::AsGeoInterface;
             use pyo3::prelude::*;
-            use pyo3::types::PyDict;
 
             /// Exchanges vector geometries between Rust and Python using [pyo3](https://pyo3.rs) and [Pythons `__geo_interface__` protocol](https://gist.github.com/sgillies/2217756).
             #[derive(Debug)]
             #[pyclass]
-            pub struct GeoInterface(pub geo_types::Geometry<$coord_type>);
+            pub struct GeometryInterface(pub geo_types::Geometry<$coord_type>);
 
             #[pymethods]
-            impl GeoInterface {
+            impl GeometryInterface {
                 #[getter]
-                fn __geo_interface__<'py>(&self, py: Python<'py>) -> PyResult<&'py PyDict> {
-                    self.0.as_geointerface_pydict(py)
+                fn __geo_interface__(&self, py: Python) -> PyResult<PyObject> {
+                    self.0.as_geointerface_pyobject(py)
                 }
 
                 #[cfg(feature = "wkb")]
@@ -27,13 +26,13 @@ macro_rules! dt_mod {
                 }
             }
 
-            impl<'source> FromPyObject<'source> for GeoInterface {
+            impl<'source> FromPyObject<'source> for GeometryInterface {
                 fn extract(ob: &'source PyAny) -> PyResult<Self> {
-                    Ok(GeoInterface(ob.as_geometry()?))
+                    Ok(GeometryInterface(ob.as_geometry()?))
                 }
             }
 
-            impl From<geo_types::Geometry<$coord_type>> for GeoInterface {
+            impl From<geo_types::Geometry<$coord_type>> for GeometryInterface {
                 fn from(geom: geo_types::Geometry<$coord_type>) -> Self {
                     Self(geom)
                 }
@@ -41,9 +40,9 @@ macro_rules! dt_mod {
 
             macro_rules! geometry_enum_from_impl {
                 ($geom_type:ty, $enum_variant_name:ident) => {
-                    impl From<$geom_type> for GeoInterface {
+                    impl From<$geom_type> for GeometryInterface {
                         fn from(g: $geom_type) -> Self {
-                            GeoInterface(geo_types::Geometry::$enum_variant_name(g))
+                            GeometryInterface(geo_types::Geometry::$enum_variant_name(g))
                         }
                     }
                 };
@@ -62,9 +61,9 @@ macro_rules! dt_mod {
             geometry_enum_from_impl!(geo_types::Line<$coord_type>, Line);
             geometry_enum_from_impl!(geo_types::Triangle<$coord_type>, Triangle);
 
-            impl From<GeoInterface> for geo_types::Geometry<$coord_type> {
-                fn from(gi: GeoInterface) -> Self {
-                    gi.0
+            impl From<GeometryInterface> for geo_types::Geometry<$coord_type> {
+                fn from(gw: GeometryInterface) -> Self {
+                    gw.0
                 }
             }
         }
