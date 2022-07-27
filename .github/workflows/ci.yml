@@ -39,7 +39,7 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          pip install shapely
+          pip install shapely geopandas
 
       - name: Test with cargo - default features
         uses: actions-rs/cargo@v1.0.1
