@@ -31,6 +31,9 @@ u32 = []
 u64 = []
 wkb = ["dep:geozero"]
 
+# to be used when running the unittests of this crate
+test = ["pyo3/auto-initialize"]
+
 [dependencies]
 geo-types = "0.7"
 num-traits = "0.2"
@@ -46,3 +49,4 @@ version = "0.9"
 default-features = false
 features = ["with-geo", "with-wkb"]
 optional = true
+

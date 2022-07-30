@@ -315,11 +315,10 @@ mod tests {
         Polygon,
     };
     use pyo3::types::{PyDict, PyString};
-    use pyo3::{prepare_freethreaded_python, PyResult, Python};
+    use pyo3::{PyResult, Python};
 
     #[test]
     fn coordinate_from_pytuple() {
-        prepare_freethreaded_python();
         Python::with_gil(|py| {
             let tuple = py.eval("(1.0, 2.0)", None, None).unwrap();
             let c: Coordinate<f64> = tuple.as_coordinate().unwrap();
@@ -330,7 +329,6 @@ mod tests {
 
     #[test]
     fn coordinate_from_pytuple_cast_ints() {
-        prepare_freethreaded_python();
         Python::with_gil(|py| {
             let tuple = py.eval("(1, 2)", None, None).unwrap();
             let c: Coordinate<f64> = tuple.as_coordinate().unwrap();
@@ -341,7 +339,6 @@ mod tests {
 
     #[test]
     fn coordinate_from_pytuple_to_ints() {
-        prepare_freethreaded_python();
         Python::with_gil(|py| {
             let tuple = py.eval("(1, 2)", None, None).unwrap();
             let c: Coordinate<i32> = tuple.as_coordinate().unwrap();
@@ -352,7 +349,6 @@ mod tests {
 
     #[test]
     fn coordinate_from_pylist() {
-        prepare_freethreaded_python();
         Python::with_gil(|py| {
             let list = py.eval("[1.0, 2.0]", None, None).unwrap();
             let c: Coordinate<f64> = list.as_coordinate().unwrap();
@@ -363,7 +359,6 @@ mod tests {
 
     #[test]
     fn coordinate_sequence_from_pylist() {
-        prepare_freethreaded_python();
         Python::with_gil(|py| {
             let list = py.eval("[[1.0, 2.0], (3.0, 4.)]", None, None).unwrap();
             let coords: Vec<Coordinate<f64>> = list.as_coordinate_vec().unwrap();
@@ -376,7 +371,6 @@ mod tests {
     }
 
     fn parse_geojson_geometry(geojson_str: &str) -> PyResult<Geometry<f64>> {
-        prepare_freethreaded_python();
         Python::with_gil(|py| {
             let locals = PyDict::new(py);
             locals.set_item("gj", PyString::new(py, geojson_str))?;
@@ -597,7 +591,6 @@ mod tests {
 
     #[test]
     fn read_point_using_geointerface() {
-        prepare_freethreaded_python();
         let geom = Python::with_gil(|py| {
             py.run(
                 r#"
