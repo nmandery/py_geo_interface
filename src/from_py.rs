@@ -5,7 +5,7 @@ use geo_types::{
 };
 use num_traits::NumCast;
 use pyo3::exceptions::PyValueError;
-use pyo3::types::{PyDict, PyFloat, PyInt, PyList, PyString, PyTuple};
+use pyo3::types::{PyDict, PyFloat, PyInt, PyIterator, PyList, PyString, PyTuple};
 use pyo3::{intern, PyAny, PyErr, PyResult};
 use std::any::type_name;
 
@@ -181,6 +181,38 @@ pub trait AsGeometry<T: PyCoordNum> {
 impl<T: PyCoordNum> AsGeometry<T> for PyDict {
     fn as_geometry(&self) -> PyResult<Geometry<T>> {
         extract_geometry(self, 0)
+    }
+}
+
+pub trait AsGeometryVec<T: PyCoordNum> {
+    /// Creates a `Vec<Geometry<T>` from `self`
+    fn as_geometry_vec(&self) -> PyResult<Vec<Geometry<T>>>;
+}
+
+impl<T: PyCoordNum> AsGeometryVec<T> for PyIterator {
+    fn as_geometry_vec(&self) -> PyResult<Vec<Geometry<T>>> {
+        let mut outvec = Vec::with_capacity(self.len().unwrap_or(0));
+        for maybe_geom in self {
+            outvec.push(maybe_geom?.as_geometry()?);
+        }
+        outvec.shrink_to_fit();
+        Ok(outvec)
+    }
+}
+
+impl<T: PyCoordNum> AsGeometryVec<T> for PyAny {
+    fn as_geometry_vec(&self) -> PyResult<Vec<Geometry<T>>> {
+        self.iter()?.as_geometry_vec()
+    }
+}
+
+impl<T: PyCoordNum> AsGeometryVec<T> for PyList {
+    fn as_geometry_vec(&self) -> PyResult<Vec<Geometry<T>>> {
+        let mut outvec = Vec::with_capacity(self.len());
+        for maybe_geom in self {
+            outvec.push(maybe_geom.as_geometry()?);
+        }
+        Ok(outvec)
     }
 }
 

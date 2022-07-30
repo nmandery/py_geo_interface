@@ -1,19 +1,20 @@
-use crate::wrappers::f64::GeometryInterface;
+use crate::from_py::AsGeometryVec;
+use geo_types::Geometry;
 use pyo3::prelude::*;
 
 #[derive(Debug)]
 #[pyclass]
-pub struct GeoSeries(pub Vec<GeometryInterface>);
+pub struct GeoSeries(pub Vec<Geometry<f64>>);
 
 impl<'source> FromPyObject<'source> for GeoSeries {
     fn extract(ob: &'source PyAny) -> PyResult<Self> {
-        let mut geoms = vec![];
-        for item in ob.iter()? {
-            let item = item?;
-            geoms.push(GeometryInterface::extract(item)?);
-        }
-        geoms.shrink_to_fit();
-        Ok(GeoSeries(geoms))
+        Ok(GeoSeries(ob.as_geometry_vec()?))
+    }
+}
+
+impl From<GeoSeries> for Vec<Geometry<f64>> {
+    fn from(geoseries: GeoSeries) -> Self {
+        geoseries.0
     }
 }
 
@@ -27,6 +28,16 @@ impl AsGeoSeries for PyAny {
         GeoSeries::extract(self)
     }
 }
+
+/*
+#[pymethods]
+impl GeoSeries {
+    pub fn to_geopandas(&self) -> PyResult<PyObject> {
+        todo!()
+    }
+}
+
+ */
 
 #[cfg(test)]
 mod tests {
