@@ -14,7 +14,10 @@ on:
 
 jobs:
   lint:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
         uses: actions/checkout@v1
@@ -25,6 +28,13 @@ jobs:
           toolchain: stable
           override: true
           components: rustfmt, clippy
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.8"
+          architecture: x64
+        if: matrix.os == 'macOS-latest'
 
       - name: Lint with rustfmt
         uses: actions-rs/cargo@v1
@@ -46,6 +56,7 @@ jobs:
         with:
           command: test
           toolchain: stable
+          args: --features test
 
       - name: Test with cargo - all features
         uses: actions-rs/cargo@v1.0.1
