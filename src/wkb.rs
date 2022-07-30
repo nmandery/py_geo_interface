@@ -87,11 +87,10 @@ mod tests {
     use crate::GeometryInterface;
     use geo_types::{Geometry, Point};
     use pyo3::types::PyDict;
-    use pyo3::{prepare_freethreaded_python, IntoPy, Python};
+    use pyo3::{IntoPy, Python};
 
     #[test]
     fn geometry_from_shapely_wkb_bytes_property() {
-        prepare_freethreaded_python();
         let geom = Python::with_gil(|py| {
             py.run(r#"from shapely.geometry import Point"#, None, None)?;
             py.eval(r#"Point(2.0, 4.0)"#, None, None)?.as_geometry()
@@ -102,7 +101,6 @@ mod tests {
 
     #[test]
     fn geometry_from_wkb_bytearray_property() {
-        prepare_freethreaded_python();
         let geom = Python::with_gil(|py| {
             py.run(
                 r#"
@@ -122,8 +120,6 @@ class Something:
 
     #[test]
     fn geometryinterface_wkb_property() {
-        prepare_freethreaded_python();
-
         Python::with_gil(|py| {
             let geom: GeometryInterface = Point::new(2.0_f64, 4.0_f64).into();
             let locals = PyDict::new(py);
