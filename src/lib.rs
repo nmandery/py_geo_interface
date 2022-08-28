@@ -73,7 +73,7 @@ pub mod to_py;
 pub mod wrappers;
 
 #[cfg(feature = "f64")]
-pub mod geopandas;
+pub mod series;
 
 #[cfg(feature = "wkb")]
 pub mod wkb;
