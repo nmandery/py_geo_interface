@@ -4,6 +4,7 @@
 
 * Rename `GeometryInterface` struct to `Geometry` - that is the last rename of this struct - promised.
 * Added support to exchange `Vec<Geometry>` with python. [#5](https://github.com/nmandery/py_geo_interface/pull/5)
+* Upgrade `pyo3` from 0.16 to 0.17.
 
 ## 0.3.0
 
