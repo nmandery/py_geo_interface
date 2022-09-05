@@ -87,7 +87,7 @@ macro_rules! dt_mod {
 
             impl<'source> FromPyObject<'source> for GeometryVec {
                 fn extract(ob: &'source PyAny) -> PyResult<Self> {
-                    Ok(ob.as_geometry_vec()?)
+                    ob.as_geometry_vec()
                 }
             }
 
@@ -131,7 +131,7 @@ macro_rules! dt_mod {
 
             impl<'source> FromPyObject<'source> for GeometryVecFc {
                 fn extract(ob: &'source PyAny) -> PyResult<Self> {
-                    Ok(ob.as_geometry_vec_fc()?)
+                    ob.as_geometry_vec_fc()
                 }
             }
 
