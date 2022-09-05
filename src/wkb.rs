@@ -1,4 +1,4 @@
-use geo_types::{CoordNum, Geometry};
+use geo_types::{CoordNum, Geometry as GtGeometry};
 use geozero::wkb::{FromWkb, WkbDialect, WkbWriter};
 use geozero::{CoordDimensions, GeozeroGeometry};
 use pyo3::exceptions::{PyNotImplementedError, PyValueError};
@@ -10,14 +10,14 @@ pub trait WKBSupport {
     /// attempt to read the geometry from the objects `wkb` property if this exists.
     ///
     /// This supports reading from shapely geometries while skipping the geo_interface
-    fn read_wkb_property(_value: &PyAny) -> PyResult<Option<Geometry<Self>>>
+    fn read_wkb_property(_value: &PyAny) -> PyResult<Option<GtGeometry<Self>>>
     where
         Self: CoordNum,
     {
         Ok(None)
     }
 
-    fn geometry_to_wkb(_geom: &Geometry<Self>) -> PyResult<Vec<u8>>
+    fn geometry_to_wkb(_geom: &GtGeometry<Self>) -> PyResult<Vec<u8>>
     where
         Self: CoordNum,
     {
@@ -44,7 +44,7 @@ unsupported_wkb_conversion!(i64);
 unsupported_wkb_conversion!(f32);
 
 impl WKBSupport for f64 {
-    fn read_wkb_property(value: &PyAny) -> PyResult<Option<Geometry<Self>>> {
+    fn read_wkb_property(value: &PyAny) -> PyResult<Option<GtGeometry<Self>>> {
         if let Ok(wkb_attr) = value.getattr(intern!(value.py(), "wkb")) {
             let wkb = if wkb_attr.is_callable() {
                 wkb_attr.call0()?
@@ -60,7 +60,7 @@ impl WKBSupport for f64 {
             };
             let mut cursor = Cursor::new(slice);
 
-            let geom = Geometry::from_wkb(&mut cursor, WkbDialect::Wkb)
+            let geom = GtGeometry::from_wkb(&mut cursor, WkbDialect::Wkb)
                 .map_err(|e| PyValueError::new_err(format!("unable to parse WKB: {:?}", e)))?;
             Ok(Some(geom))
         } else {
@@ -68,7 +68,7 @@ impl WKBSupport for f64 {
         }
     }
 
-    fn geometry_to_wkb(geom: &Geometry<Self>) -> PyResult<Vec<u8>>
+    fn geometry_to_wkb(geom: &GtGeometry<Self>) -> PyResult<Vec<u8>>
     where
         Self: CoordNum,
     {
@@ -84,8 +84,8 @@ impl WKBSupport for f64 {
 #[cfg(all(test, feature = "f64"))]
 mod tests {
     use crate::from_py::AsGeometry;
-    use crate::GeometryInterface;
-    use geo_types::{Geometry, Point};
+    use crate::Geometry;
+    use geo_types::{Geometry as GtGeometry, Point};
     use pyo3::types::PyDict;
     use pyo3::{IntoPy, Python};
 
@@ -96,7 +96,7 @@ mod tests {
             py.eval(r#"Point(2.0, 4.0)"#, None, None)?.as_geometry()
         })
         .unwrap();
-        assert_eq!(geom, Geometry::Point(Point::new(2., 4.)));
+        assert_eq!(geom, GtGeometry::Point(Point::new(2., 4.)));
     }
 
     #[test]
@@ -115,13 +115,13 @@ class Something:
             py.eval(r#"Something()"#, None, None)?.as_geometry()
         })
         .unwrap();
-        assert_eq!(geom, Geometry::Point(Point::new(2., 4.)));
+        assert_eq!(geom, GtGeometry::Point(Point::new(2., 4.)));
     }
 
     #[test]
     fn geometryinterface_wkb_property() {
         Python::with_gil(|py| {
-            let geom: GeometryInterface = Point::new(2.0_f64, 4.0_f64).into();
+            let geom: Geometry = Point::new(2.0_f64, 4.0_f64).into();
             let locals = PyDict::new(py);
             locals.set_item("geom", geom.into_py(py)).unwrap();
 

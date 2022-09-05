@@ -5,7 +5,7 @@ use geo_types::{
 };
 use num_traits::NumCast;
 use pyo3::exceptions::PyValueError;
-use pyo3::types::{PyDict, PyFloat, PyInt, PyList, PyString, PyTuple};
+use pyo3::types::{PyDict, PyFloat, PyInt, PyIterator, PyList, PyString, PyTuple};
 use pyo3::{intern, PyAny, PyErr, PyResult};
 use std::any::type_name;
 
@@ -184,14 +184,58 @@ impl<T: PyCoordNum> AsGeometry<T> for PyDict {
     }
 }
 
+pub trait AsGeometryVec<T: PyCoordNum> {
+    /// Creates a `Vec<Geometry<T>` from `self`
+    fn as_geometry_vec(&self) -> PyResult<Vec<Geometry<T>>>;
+}
+
+impl<T: PyCoordNum> AsGeometryVec<T> for PyIterator {
+    fn as_geometry_vec(&self) -> PyResult<Vec<Geometry<T>>> {
+        let mut outvec = Vec::with_capacity(self.len().unwrap_or(0));
+        for maybe_geom in self {
+            outvec.push(maybe_geom?.as_geometry()?);
+        }
+        outvec.shrink_to_fit();
+        Ok(outvec)
+    }
+}
+
+impl<T: PyCoordNum> AsGeometryVec<T> for PyAny {
+    fn as_geometry_vec(&self) -> PyResult<Vec<Geometry<T>>> {
+        if let Ok(dict) = self.downcast::<PyDict>() {
+            // geopandas GeoSeries are exposed to __geo_interface__ as FeatureCollections
+            let features = extract_dict_value(dict, intern!(dict.py(), "features"))?;
+            let mut geometries = vec![];
+            for feature in features.iter()? {
+                let feature = feature?.downcast::<PyDict>()?;
+                let geometry = extract_dict_value(feature, intern!(feature.py(), "geometry"))?;
+                geometries.push(geometry.as_geometry()?)
+            }
+            Ok(geometries)
+        } else {
+            self.iter()?.as_geometry_vec()
+        }
+    }
+}
+
+impl<T: PyCoordNum> AsGeometryVec<T> for PyList {
+    fn as_geometry_vec(&self) -> PyResult<Vec<Geometry<T>>> {
+        let mut outvec = Vec::with_capacity(self.len());
+        for maybe_geom in self {
+            outvec.push(maybe_geom.as_geometry()?);
+        }
+        Ok(outvec)
+    }
+}
+
 fn extract_geometry<T: PyCoordNum>(dict: &PyDict, level: u8) -> PyResult<Geometry<T>> {
     if level > 1 {
         Err(PyValueError::new_err("recursion level exceeded"))
     } else {
-        let geom_type = extract_geom_dict_value(dict, intern!(dict.py(), "type"))?
+        let geom_type = extract_dict_value(dict, intern!(dict.py(), "type"))?
             .downcast::<PyString>()?
             .extract::<String>()?;
-        let coordinates = || extract_geom_dict_value(dict, intern!(dict.py(), "coordinates"));
+        let coordinates = || extract_dict_value(dict, intern!(dict.py(), "coordinates"));
         match geom_type.as_str() {
             "Point" => Ok(Geometry::from(Point::from(coordinates()?.as_coordinate()?))),
             "MultiPoint" => Ok(Geometry::from(MultiPoint::from(
@@ -219,7 +263,7 @@ fn extract_geometry<T: PyCoordNum>(dict: &PyDict, level: u8) -> PyResult<Geometr
             )?))),
             "GeometryCollection" => {
                 let geoms = tuple_map(
-                    extract_geom_dict_value(dict, intern!(dict.py(), "geometries"))?,
+                    extract_dict_value(dict, intern!(dict.py(), "geometries"))?,
                     |tuple| {
                         tuple
                             .iter()
@@ -261,12 +305,12 @@ fn extract_polygon<T: PyCoordNum>(obj: &PyAny) -> PyResult<Polygon<T>> {
     Ok(Polygon::new(exterior, linestings))
 }
 
-fn extract_geom_dict_value<'a>(dict: &'a PyDict, key: &PyString) -> PyResult<&'a PyAny> {
+fn extract_dict_value<'a>(dict: &'a PyDict, key: &PyString) -> PyResult<&'a PyAny> {
     if let Some(value) = dict.get_item(key) {
         Ok(value)
     } else {
         Err(PyValueError::new_err(format!(
-            "geometry has \"{}\" not set",
+            "dict has \"{}\" not set",
             key
         )))
     }
@@ -309,7 +353,7 @@ mod tests {
     //! most data used in these testcases is from the GeoJSON RFC
     //! https://datatracker.ietf.org/doc/html/rfc7946
     //!
-    use crate::from_py::{AsCoordinate, AsCoordinateVec, AsGeometry};
+    use crate::from_py::{AsCoordinate, AsCoordinateVec, AsGeometry, AsGeometryVec};
     use geo_types::{
         Coordinate, Geometry, GeometryCollection, LineString, MultiPoint, MultiPolygon, Point,
         Polygon,
@@ -606,5 +650,22 @@ class Something:
         })
         .unwrap();
         assert_eq!(geom, Geometry::Point(Point::new(5., 3.)));
+    }
+
+    #[test]
+    fn geometries_from_geopandas_geoseries() {
+        let geometries: Vec<Geometry<f64>> = Python::with_gil(|py| {
+            py.run(
+                r#"
+import geopandas as gpd
+world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
+        "#,
+                None,
+                None,
+            )?;
+            py.eval(r#"world.geometry"#, None, None)?.as_geometry_vec()
+        })
+        .unwrap();
+        assert!(geometries.len() > 100);
     }
 }

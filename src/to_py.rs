@@ -3,7 +3,7 @@ use geo_types::{
     Coordinate, Geometry, GeometryCollection, Line, LineString, MultiLineString, MultiPoint,
     MultiPolygon, Point, Polygon,
 };
-use pyo3::types::{PyDict, PyString, PyTuple};
+use pyo3::types::{PyDict, PyList, PyString, PyTuple};
 use pyo3::{intern, PyObject, PyResult, Python, ToPyObject};
 use std::iter::once;
 
@@ -182,5 +182,115 @@ where
 {
     fn to_py(&self, py: Python) -> PyObject {
         PyTuple::new(py, self.iter().map(|c| c.to_py(py))).to_object(py)
+    }
+}
+
+pub trait AsGeoInterfaceList {
+    /// return self as a python list of `__geo_interface__`-representations of geometries
+    fn as_geointerface_list_pyobject(&self, py: Python) -> PyResult<PyObject>;
+}
+
+impl<T> AsGeoInterfaceList for &[Geometry<T>]
+where
+    T: PyCoordNum,
+{
+    fn as_geointerface_list_pyobject(&self, py: Python) -> PyResult<PyObject> {
+        let geometries = self
+            .iter()
+            .map(|g| g.as_geointerface_pyobject(py))
+            .collect::<PyResult<Vec<_>>>()?;
+        Ok(PyList::new(py, geometries).to_object(py))
+    }
+}
+
+impl<T> AsGeoInterfaceList for Vec<Geometry<T>>
+where
+    T: PyCoordNum,
+{
+    fn as_geointerface_list_pyobject(&self, py: Python) -> PyResult<PyObject> {
+        self.as_slice().as_geointerface_list_pyobject(py)
+    }
+}
+
+pub trait AsGeoInterfaceFeatureCollection {
+    /// return self as a python `__geo_interface__` FeatureCollection
+    fn as_geointerface_featurecollection_pyobject(&self, py: Python) -> PyResult<PyObject>;
+}
+
+impl<T> AsGeoInterfaceFeatureCollection for &[Geometry<T>]
+where
+    T: PyCoordNum,
+{
+    fn as_geointerface_featurecollection_pyobject(&self, py: Python) -> PyResult<PyObject> {
+        let featurecollection = PyDict::new(py);
+        featurecollection.set_item(intern!(py, "type"), intern!(py, "FeatureCollection"))?;
+
+        let features = self
+            .iter()
+            .map(|geom| geom_as_py_feature(py, geom))
+            .collect::<PyResult<Vec<_>>>()?;
+
+        featurecollection.set_item(intern!(py, "features"), features)?;
+        Ok(featurecollection.to_object(py))
+    }
+}
+
+impl<T> AsGeoInterfaceFeatureCollection for Vec<Geometry<T>>
+where
+    T: PyCoordNum,
+{
+    fn as_geointerface_featurecollection_pyobject(&self, py: Python) -> PyResult<PyObject> {
+        self.as_slice()
+            .as_geointerface_featurecollection_pyobject(py)
+    }
+}
+
+fn geom_as_py_feature<T>(py: Python, geom: &Geometry<T>) -> PyResult<PyObject>
+where
+    T: PyCoordNum,
+{
+    let feature = PyDict::new(py);
+    feature.set_item(intern!(py, "type"), intern!(py, "Feature"))?;
+    feature.set_item(intern!(py, "properties"), PyDict::new(py))?;
+    feature.set_item(intern!(py, "geometry"), geom.as_geointerface_pyobject(py)?)?;
+    Ok(feature.to_object(py))
+}
+
+#[cfg(all(test, feature = "f64"))]
+mod tests {
+    use crate::wrappers::f64::GeometryVecFc;
+    use geo_types::{Geometry as GtGeometry, Point};
+    use pyo3::types::PyDict;
+    use pyo3::{IntoPy, Python};
+
+    #[test]
+    fn geopandas_from_features() {
+        let geometries: GeometryVecFc = vec![
+            GtGeometry::Point(Point::new(1.0f64, 3.0)),
+            GtGeometry::Point(Point::new(2.0, 6.0)),
+        ]
+        .into();
+
+        Python::with_gil(|py| {
+            let locals = PyDict::new(py);
+            locals
+                .set_item("feature_collection", geometries.into_py(py))
+                .unwrap();
+
+            py.run(
+                r#"
+import geopandas as gpd
+from shapely.geometry import Point
+
+gdf = gpd.GeoDataFrame.from_features(feature_collection)
+assert len(gdf) == 2
+assert gdf.geometry[0] == Point(1,3)
+assert gdf.geometry[1] == Point(2,6)
+            "#,
+                None,
+                Some(locals),
+            )
+            .unwrap();
+        });
     }
 }
