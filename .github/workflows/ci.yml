@@ -56,7 +56,7 @@ jobs:
         with:
           command: test
           toolchain: stable
-          args: --features test
+          args: --features test,wkb
 
       - name: Test with cargo - all features
         uses: actions-rs/cargo@v1.0.1
