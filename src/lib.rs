@@ -1,6 +1,8 @@
 //! Exchange vector geometries between Rust and Python using [pyo3](https://pyo3.rs) and [Pythons `__geo_interface__` protocol](https://gist.github.com/sgillies/2217756).
 //!
 //! The `__geo_interface__` protocol is implemented by most popular geospatial python modules like `shapely`, `geojson`, `geopandas`, ....
+//! While this protocol also defines `Features` and `FeatureCollections`, this library so far only focuses on the `Geometry` type, as
+//! this one can be directly mapped to the types of the `geo-types` crate.
 //!
 //! The main struct of this crate is [`Geometry`]. This the docs there for usage examples.
 //!
