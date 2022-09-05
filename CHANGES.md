@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+* Rename `GeometryInterface` struct to `Geometry` - that is the last rename of this struct - promised.
+* Added support to exchange `Vec<Geometry>` with python.
+
+## 0.3.0
+
 * Support exchanging geometries using Well-Known-Binary format. The `wkb`-property of `shapely`
   geometries will be used. Additionally, the `GeometryInterface`-type exposed to python will have a `wkb`-property
   itself. This is only supported for the `f64` variant of the `GeoInterface`.
