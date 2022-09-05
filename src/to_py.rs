@@ -272,13 +272,13 @@ mod tests {
         .into();
 
         Python::with_gil(|py| {
-            let globals = PyDict::new(py);
-            globals
+            let locals = PyDict::new(py);
+            locals
                 .set_item("feature_collection", geometries.into_py(py))
                 .unwrap();
 
             py.run(
-                r"
+                r#"
 import geopandas as gpd
 from shapely.geometry import Point
 
@@ -286,9 +286,9 @@ gdf = gpd.GeoDataFrame.from_features(feature_collection)
 assert len(gdf) == 2
 assert gdf.geometry[0] == Point(1,3)
 assert gdf.geometry[1] == Point(2,6)
-            ",
-                Some(globals),
+            "#,
                 None,
+                Some(locals),
             )
             .unwrap();
         });
