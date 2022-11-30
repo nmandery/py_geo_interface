@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+## 0.4.1 - 2022-11-30
 * Fix deprecation warnings of `geo_types::Coordinate` by migrating to `geo_types::Coord`.
 
 ## 0.4.0
