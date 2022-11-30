@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+* Fix deprecation warnings of `geo_types::Coordinate` by migrating to `geo_types::Coord`.
+
 ## 0.4.0
 
 * Rename `GeometryInterface` struct to `Geometry` - that is the last rename of this struct - promised.

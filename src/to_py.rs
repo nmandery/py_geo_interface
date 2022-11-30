@@ -1,6 +1,6 @@
 use crate::PyCoordNum;
 use geo_types::{
-    Coordinate, Geometry, GeometryCollection, Line, LineString, MultiLineString, MultiPoint,
+    Coord, Geometry, GeometryCollection, Line, LineString, MultiLineString, MultiPoint,
     MultiPolygon, Point, Polygon,
 };
 use pyo3::types::{PyDict, PyList, PyString, PyTuple};
@@ -167,7 +167,7 @@ trait ToPy {
     fn to_py(&self, py: Python) -> PyObject;
 }
 
-impl<T> ToPy for Coordinate<T>
+impl<T> ToPy for Coord<T>
 where
     T: PyCoordNum,
 {
@@ -176,7 +176,7 @@ where
     }
 }
 
-impl<T> ToPy for [Coordinate<T>]
+impl<T> ToPy for [Coord<T>]
 where
     T: PyCoordNum,
 {

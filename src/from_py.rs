@@ -1,7 +1,7 @@
 use crate::PyCoordNum;
 use geo_types::{
-    Coordinate, Geometry, GeometryCollection, LineString, MultiLineString, MultiPoint,
-    MultiPolygon, Point, Polygon,
+    Coord, Geometry, GeometryCollection, LineString, MultiLineString, MultiPoint, MultiPolygon,
+    Point, Polygon,
 };
 use num_traits::NumCast;
 use pyo3::exceptions::PyValueError;
@@ -11,7 +11,7 @@ use std::any::type_name;
 
 pub trait AsCoordinate<T: PyCoordNum> {
     /// Creates a `Coordinate<T>` from `self`.
-    fn as_coordinate(&self) -> PyResult<Coordinate<T>>;
+    fn as_coordinate(&self) -> PyResult<Coord<T>>;
 }
 
 pub trait ExtractFromPyFloat {
@@ -124,13 +124,13 @@ where
 }
 
 impl<T: PyCoordNum> AsCoordinate<T> for PyAny {
-    fn as_coordinate(&self) -> PyResult<Coordinate<T>> {
+    fn as_coordinate(&self) -> PyResult<Coord<T>> {
         tuple_map(self, |tuple| tuple.as_coordinate())
     }
 }
 
 impl<T: PyCoordNum> AsCoordinate<T> for PyTuple {
-    fn as_coordinate(&self) -> PyResult<Coordinate<T>> {
+    fn as_coordinate(&self) -> PyResult<Coord<T>> {
         if self.len() != 2 {
             return Err(PyValueError::new_err(format!(
                 "Expected length of 2 values for coordinate, found {}",
@@ -145,30 +145,30 @@ impl<T: PyCoordNum> AsCoordinate<T> for PyTuple {
 }
 
 impl<T: PyCoordNum> AsCoordinate<T> for PyList {
-    fn as_coordinate(&self) -> PyResult<Coordinate<T>> {
+    fn as_coordinate(&self) -> PyResult<Coord<T>> {
         self.as_sequence().tuple()?.as_coordinate()
     }
 }
 
 pub trait AsCoordinateVec<T: PyCoordNum> {
     /// Creates a `Vec<Coordinate<T>>` from `self`.
-    fn as_coordinate_vec(&self) -> PyResult<Vec<Coordinate<T>>>;
+    fn as_coordinate_vec(&self) -> PyResult<Vec<Coord<T>>>;
 }
 
 impl<T: PyCoordNum> AsCoordinateVec<T> for PyTuple {
-    fn as_coordinate_vec(&self) -> PyResult<Vec<Coordinate<T>>> {
+    fn as_coordinate_vec(&self) -> PyResult<Vec<Coord<T>>> {
         self.iter().map(|tuple| tuple.as_coordinate()).collect()
     }
 }
 
 impl<T: PyCoordNum> AsCoordinateVec<T> for PyList {
-    fn as_coordinate_vec(&self) -> PyResult<Vec<Coordinate<T>>> {
+    fn as_coordinate_vec(&self) -> PyResult<Vec<Coord<T>>> {
         self.as_sequence().tuple()?.as_coordinate_vec()
     }
 }
 
 impl<T: PyCoordNum> AsCoordinateVec<T> for PyAny {
-    fn as_coordinate_vec(&self) -> PyResult<Vec<Coordinate<T>>> {
+    fn as_coordinate_vec(&self) -> PyResult<Vec<Coord<T>>> {
         tuple_map(self, |tuple| tuple.as_coordinate_vec())
     }
 }
@@ -355,8 +355,7 @@ mod tests {
     //!
     use crate::from_py::{AsCoordinate, AsCoordinateVec, AsGeometry, AsGeometryVec};
     use geo_types::{
-        Coordinate, Geometry, GeometryCollection, LineString, MultiPoint, MultiPolygon, Point,
-        Polygon,
+        Coord, Geometry, GeometryCollection, LineString, MultiPoint, MultiPolygon, Point, Polygon,
     };
     use pyo3::types::{PyDict, PyString};
     use pyo3::{PyResult, Python};
@@ -365,7 +364,7 @@ mod tests {
     fn coordinate_from_pytuple() {
         Python::with_gil(|py| {
             let tuple = py.eval("(1.0, 2.0)", None, None).unwrap();
-            let c: Coordinate<f64> = tuple.as_coordinate().unwrap();
+            let c: Coord<f64> = tuple.as_coordinate().unwrap();
             assert_eq!(c.x, 1.0);
             assert_eq!(c.y, 2.0);
         });
@@ -375,7 +374,7 @@ mod tests {
     fn coordinate_from_pytuple_cast_ints() {
         Python::with_gil(|py| {
             let tuple = py.eval("(1, 2)", None, None).unwrap();
-            let c: Coordinate<f64> = tuple.as_coordinate().unwrap();
+            let c: Coord<f64> = tuple.as_coordinate().unwrap();
             assert_eq!(c.x, 1.0);
             assert_eq!(c.y, 2.0);
         });
@@ -385,7 +384,7 @@ mod tests {
     fn coordinate_from_pytuple_to_ints() {
         Python::with_gil(|py| {
             let tuple = py.eval("(1, 2)", None, None).unwrap();
-            let c: Coordinate<i32> = tuple.as_coordinate().unwrap();
+            let c: Coord<i32> = tuple.as_coordinate().unwrap();
             assert_eq!(c.x, 1);
             assert_eq!(c.y, 2);
         });
@@ -395,7 +394,7 @@ mod tests {
     fn coordinate_from_pylist() {
         Python::with_gil(|py| {
             let list = py.eval("[1.0, 2.0]", None, None).unwrap();
-            let c: Coordinate<f64> = list.as_coordinate().unwrap();
+            let c: Coord<f64> = list.as_coordinate().unwrap();
             assert_eq!(c.x, 1.0);
             assert_eq!(c.y, 2.0);
         });
@@ -405,7 +404,7 @@ mod tests {
     fn coordinate_sequence_from_pylist() {
         Python::with_gil(|py| {
             let list = py.eval("[[1.0, 2.0], (3.0, 4.)]", None, None).unwrap();
-            let coords: Vec<Coordinate<f64>> = list.as_coordinate_vec().unwrap();
+            let coords: Vec<Coord<f64>> = list.as_coordinate_vec().unwrap();
             assert_eq!(coords.len(), 2);
             assert_eq!(coords[0].x, 1.0);
             assert_eq!(coords[0].y, 2.0);
@@ -455,8 +454,8 @@ mod tests {
         assert_eq!(
             geom,
             Geometry::MultiPoint(MultiPoint::from(vec![
-                Point::from(Coordinate::from((100., 0.))),
-                Point::from(Coordinate::from((101., 1.)))
+                Point::from(Coord::from((100., 0.))),
+                Point::from(Coord::from((101., 1.)))
             ]))
         );
     }
@@ -478,8 +477,8 @@ mod tests {
         assert_eq!(
             geom,
             Geometry::LineString(LineString::from(vec![
-                Coordinate::from((100., 0.)),
-                Coordinate::from((101., 1.))
+                Coord::from((100., 0.)),
+                Coord::from((101., 1.))
             ]))
         );
     }
@@ -514,18 +513,18 @@ mod tests {
             geom,
             Geometry::Polygon(Polygon::new(
                 LineString::from(vec![
-                    Coordinate::from((100., 0.)),
-                    Coordinate::from((101., 0.)),
-                    Coordinate::from((101., 1.)),
-                    Coordinate::from((100., 1.)),
-                    Coordinate::from((100., 0.)),
+                    Coord::from((100., 0.)),
+                    Coord::from((101., 0.)),
+                    Coord::from((101., 1.)),
+                    Coord::from((100., 1.)),
+                    Coord::from((100., 0.)),
                 ]),
                 vec![LineString::from(vec![
-                    Coordinate::from((100.8, 0.8)),
-                    Coordinate::from((100.8, 0.2)),
-                    Coordinate::from((100.2, 0.2)),
-                    Coordinate::from((100.2, 0.8)),
-                    Coordinate::from((100.8, 0.8)),
+                    Coord::from((100.8, 0.8)),
+                    Coord::from((100.8, 0.2)),
+                    Coord::from((100.2, 0.2)),
+                    Coord::from((100.2, 0.8)),
+                    Coord::from((100.8, 0.8)),
                 ])]
             ))
         );
@@ -573,28 +572,28 @@ mod tests {
             Geometry::MultiPolygon(MultiPolygon::new(vec![
                 Polygon::new(
                     LineString::from(vec![
-                        Coordinate::from((102., 2.)),
-                        Coordinate::from((103., 2.)),
-                        Coordinate::from((103., 3.)),
-                        Coordinate::from((102., 3.)),
-                        Coordinate::from((102., 2.)),
+                        Coord::from((102., 2.)),
+                        Coord::from((103., 2.)),
+                        Coord::from((103., 3.)),
+                        Coord::from((102., 3.)),
+                        Coord::from((102., 2.)),
                     ]),
                     vec![]
                 ),
                 Polygon::new(
                     LineString::from(vec![
-                        Coordinate::from((100., 0.)),
-                        Coordinate::from((101., 0.)),
-                        Coordinate::from((101., 1.)),
-                        Coordinate::from((100., 1.)),
-                        Coordinate::from((100., 0.)),
+                        Coord::from((100., 0.)),
+                        Coord::from((101., 0.)),
+                        Coord::from((101., 1.)),
+                        Coord::from((100., 1.)),
+                        Coord::from((100., 0.)),
                     ]),
                     vec![LineString::from(vec![
-                        Coordinate::from((100.2, 0.2)),
-                        Coordinate::from((100.2, 0.8)),
-                        Coordinate::from((100.8, 0.8)),
-                        Coordinate::from((100.8, 0.2)),
-                        Coordinate::from((100.2, 0.2)),
+                        Coord::from((100.2, 0.2)),
+                        Coord::from((100.2, 0.8)),
+                        Coord::from((100.8, 0.8)),
+                        Coord::from((100.8, 0.2)),
+                        Coord::from((100.2, 0.2)),
                     ])]
                 )
             ]))
@@ -624,10 +623,10 @@ mod tests {
         assert_eq!(
             geom,
             Geometry::GeometryCollection(GeometryCollection::new_from(vec![
-                Geometry::Point(Point::from(Coordinate::from((100., 0.)))),
+                Geometry::Point(Point::from(Coord::from((100., 0.)))),
                 Geometry::LineString(LineString::from(vec![
-                    Coordinate::from((101., 0.)),
-                    Coordinate::from((102., 1.))
+                    Coord::from((101., 0.)),
+                    Coord::from((102., 1.))
                 ]))
             ]))
         );
