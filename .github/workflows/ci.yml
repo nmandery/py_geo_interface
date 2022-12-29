@@ -27,10 +27,9 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install latest stable
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
-          override: true
           components: rustfmt, clippy
 
       - name: Set up Python
@@ -41,30 +40,17 @@ jobs:
         if: matrix.os == 'macOS-latest'
 
       - name: Lint with rustfmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
+        run: cargo fmt
 
       - name: Lint with clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all-targets
+        run: cargo clippy --all-targets
 
       - name: Install Python dependencies
         run: |
           pip install shapely geopandas
 
       - name: Test with cargo - default features
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          toolchain: stable
-          args: --features test,wkb
+        run: cargo test --features test,wkb
 
       - name: Test with cargo - all features
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          toolchain: stable
-          args: --all-features
+        run: cargo test --all-features
