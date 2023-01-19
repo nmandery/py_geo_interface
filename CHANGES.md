@@ -1,6 +1,7 @@
 # Changes
 
 ## Unreleased
+* Upgrade `pyo3` from 0.17 to 0.18.
 
 ## 0.4.1 - 2022-11-30
 * Fix deprecation warnings of `geo_types::Coordinate` by migrating to `geo_types::Coord`.
