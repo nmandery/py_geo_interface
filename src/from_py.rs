@@ -98,9 +98,9 @@ extract_from_pyint_int!(u64);
 
 #[inline]
 fn extract_pycoordnum<T: PyCoordNum>(obj: &PyAny) -> PyResult<T> {
-    if obj.is_instance_of::<PyFloat>()? {
+    if obj.is_instance_of::<PyFloat>() {
         T::extract_from_pyfloat(obj.downcast::<PyFloat>()?)
-    } else if obj.is_instance_of::<PyInt>()? {
+    } else if obj.is_instance_of::<PyInt>() {
         T::extract_from_pyint(obj.downcast::<PyInt>()?)
     } else {
         Err(PyValueError::new_err(
@@ -114,10 +114,10 @@ fn tuple_map<'a, O, F>(obj: &'a PyAny, map_fn: F) -> PyResult<O>
 where
     F: Fn(&'a PyTuple) -> PyResult<O>,
 {
-    if obj.is_instance_of::<PyTuple>()? {
+    if obj.is_instance_of::<PyTuple>() {
         map_fn(obj.downcast::<PyTuple>()?)
-    } else if obj.is_instance_of::<PyList>()? {
-        map_fn(obj.downcast::<PyList>()?.as_sequence().tuple()?)
+    } else if obj.is_instance_of::<PyList>() {
+        map_fn(obj.downcast::<PyList>()?.as_sequence().to_tuple()?)
     } else {
         Err(PyValueError::new_err("expected either tuple or list"))
     }
@@ -146,7 +146,7 @@ impl<T: PyCoordNum> AsCoordinate<T> for PyTuple {
 
 impl<T: PyCoordNum> AsCoordinate<T> for PyList {
     fn as_coordinate(&self) -> PyResult<Coord<T>> {
-        self.as_sequence().tuple()?.as_coordinate()
+        self.as_sequence().to_tuple()?.as_coordinate()
     }
 }
 
@@ -163,7 +163,7 @@ impl<T: PyCoordNum> AsCoordinateVec<T> for PyTuple {
 
 impl<T: PyCoordNum> AsCoordinateVec<T> for PyList {
     fn as_coordinate_vec(&self) -> PyResult<Vec<Coord<T>>> {
-        self.as_sequence().tuple()?.as_coordinate_vec()
+        self.as_sequence().to_tuple()?.as_coordinate_vec()
     }
 }
 
