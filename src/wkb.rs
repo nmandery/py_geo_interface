@@ -51,9 +51,9 @@ impl WKBSupport for f64 {
             } else {
                 wkb_attr
             };
-            let slice = if wkb.is_instance_of::<PyBytes>()? {
+            let slice = if wkb.is_instance_of::<PyBytes>() {
                 wkb.downcast::<PyBytes>()?.as_bytes()
-            } else if wkb.is_instance_of::<PyByteArray>()? {
+            } else if wkb.is_instance_of::<PyByteArray>() {
                 unsafe { wkb.downcast::<PyByteArray>()?.as_bytes() }
             } else {
                 return Ok(None);
