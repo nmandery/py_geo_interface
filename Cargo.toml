@@ -45,7 +45,7 @@ features = [
 ]
 
 [dependencies.geozero]
-version = "0.9"
+version = "0.10"
 default-features = false
 features = ["with-geo", "with-wkb"]
 optional = true

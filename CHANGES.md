@@ -1,6 +1,7 @@
 # Changes
 
 ## Unreleased
+* Upgrade `geozero` from 0.9 to 0.10.
 
 ## 0.6.0 - 2023-06-10
 * Upgrade `pyo3` from 0.18 to 0.19.
