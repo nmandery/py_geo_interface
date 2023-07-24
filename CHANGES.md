@@ -2,6 +2,7 @@
 
 ## Unreleased
 * Upgrade `geozero` from 0.9 to 0.10.
+* Do not access inner members of `geo_types` types. Only use the provided methods.
 
 ## 0.6.0 - 2023-06-10
 * Upgrade `pyo3` from 0.18 to 0.19.

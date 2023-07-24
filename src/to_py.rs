@@ -5,6 +5,7 @@ use geo_types::{
 };
 use pyo3::types::{PyDict, PyList, PyString, PyTuple};
 use pyo3::{intern, PyObject, PyResult, Python, ToPyObject};
+use std::borrow::Borrow;
 use std::iter::once;
 
 /// Convert `self` to a Python dictionary reflecting the structure of a `__geo_interface__` python dict.
@@ -37,7 +38,7 @@ where
     T: PyCoordNum,
 {
     fn as_geointerface_pyobject(&self, py: Python) -> PyResult<PyObject> {
-        make_geom_pyobject(py, intern!(py, "Point"), self.0.to_py(py))
+        make_geom_pyobject(py, intern!(py, "Point"), Coord::from(*self).to_py(py))
     }
 }
 
@@ -49,7 +50,7 @@ where
         make_geom_pyobject(
             py,
             intern!(py, "MultiPoint"),
-            PyTuple::new(py, self.0.iter().map(|pt| pt.0.to_py(py))).to_object(py),
+            coord_iter_to_py(self.iter().copied().map(Coord::from), py),
         )
     }
 }
@@ -59,7 +60,11 @@ where
     T: PyCoordNum,
 {
     fn as_geointerface_pyobject(&self, py: Python) -> PyResult<PyObject> {
-        make_geom_pyobject(py, intern!(py, "LineString"), self.0.to_py(py))
+        make_geom_pyobject(
+            py,
+            intern!(py, "LineString"),
+            coord_iter_to_py(self.coords(), py),
+        )
     }
 }
 
@@ -68,10 +73,16 @@ where
     T: PyCoordNum,
 {
     fn as_geointerface_pyobject(&self, py: Python) -> PyResult<PyObject> {
+        // Remove vec allocation? Only used to have an ExactSizeIterator
+        let linestrings: Vec<_> = self
+            .iter()
+            .map(|linestring| coord_iter_to_py(linestring.coords(), py))
+            .collect();
+
         make_geom_pyobject(
             py,
             intern!(py, "MultiLineString"),
-            PyTuple::new(py, self.0.iter().map(|linestring| linestring.0.to_py(py))).to_object(py),
+            PyTuple::new(py, linestrings).to_object(py),
         )
     }
 }
@@ -93,8 +104,13 @@ fn polygon_coordinates_to_pyobject<T>(py: Python, polygon: &Polygon<T>) -> PyObj
 where
     T: PyCoordNum,
 {
-    let linestring_objs: Vec<_> = once(polygon.exterior().0.to_py(py))
-        .chain(polygon.interiors().iter().map(|ls| ls.0.to_py(py)))
+    let linestring_objs: Vec<_> = once(coord_iter_to_py(polygon.exterior().coords(), py))
+        .chain(
+            polygon
+                .interiors()
+                .iter()
+                .map(|ls| coord_iter_to_py(ls.coords(), py)),
+        )
         .collect();
     PyTuple::new(py, linestring_objs).to_object(py)
 }
@@ -117,16 +133,16 @@ where
     T: PyCoordNum,
 {
     fn as_geointerface_pyobject(&self, py: Python) -> PyResult<PyObject> {
+        // Remove vec allocation? Only used to have an ExactSizeIterator
+        let polygons: Vec<_> = self
+            .iter()
+            .map(|polygon| polygon_coordinates_to_pyobject(py, polygon))
+            .collect();
+
         make_geom_pyobject(
             py,
             intern!(py, "MultiPolygon"),
-            PyTuple::new(
-                py,
-                self.0
-                    .iter()
-                    .map(|polygon| polygon_coordinates_to_pyobject(py, polygon)),
-            )
-            .to_object(py),
+            PyTuple::new(py, polygons).to_object(py),
         )
     }
 }
@@ -149,18 +165,28 @@ where
     fn as_geointerface_pyobject(&self, py: Python) -> PyResult<PyObject> {
         let dict = PyDict::new(py);
         dict.set_item(intern!(py, "type"), intern!(py, "GeometryCollection"))?;
-        dict.set_item(
-            intern!(py, "geometries"),
-            PyTuple::new(
-                py,
-                self.0
-                    .iter()
-                    .map(|geom| geom.as_geointerface_pyobject(py))
-                    .collect::<PyResult<Vec<_>>>()?,
-            ),
-        )?;
+
+        // Remove vec allocation? Only used to have an ExactSizeIterator
+        let geometries: Vec<_> = self
+            .iter()
+            .map(|geom| geom.as_geointerface_pyobject(py))
+            .collect::<PyResult<Vec<_>>>()?;
+
+        dict.set_item(intern!(py, "geometries"), PyTuple::new(py, geometries))?;
         Ok(dict.to_object(py))
     }
+}
+
+fn coord_iter_to_py<I, B, T>(iter: I, py: Python) -> PyObject
+where
+    I: Iterator<Item = B>,
+    B: Borrow<Coord<T>>,
+    T: PyCoordNum,
+{
+    // Remove vec allocation? Only used to have an ExactSizeIterator
+    let elements: Vec<_> = iter.map(|coord| coord.borrow().to_py(py)).collect();
+
+    PyTuple::new(py, elements).to_object(py)
 }
 
 trait ToPy {
