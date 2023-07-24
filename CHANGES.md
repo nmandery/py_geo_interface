@@ -1,6 +1,8 @@
 # Changes
 
 ## Unreleased
+
+## 0.6.1 - 2023-07-24
 * Upgrade `geozero` from 0.9 to 0.10.
 * Do not access inner members of `geo_types` types. Only use the provided methods.
 
