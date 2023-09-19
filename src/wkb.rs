@@ -1,6 +1,6 @@
 use geo_types::{CoordNum, Geometry as GtGeometry};
 use geozero::wkb::{FromWkb, WkbDialect, WkbWriter};
-use geozero::{CoordDimensions, GeozeroGeometry};
+use geozero::GeozeroGeometry;
 use pyo3::exceptions::{PyNotImplementedError, PyValueError};
 use pyo3::types::{PyByteArray, PyBytes};
 use pyo3::{intern, PyAny, PyResult};
@@ -74,7 +74,6 @@ impl WKBSupport for f64 {
     {
         let mut wkb: Vec<u8> = Vec::new();
         let mut writer = WkbWriter::new(&mut wkb, WkbDialect::Wkb);
-        writer.dims = CoordDimensions::xy();
         geom.process_geom(&mut writer)
             .map_err(|e| PyValueError::new_err(format!("Unable to convert to WKB: {:?}", e)))?;
         Ok(wkb)

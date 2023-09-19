@@ -1,6 +1,7 @@
 # Changes
 
 ## Unreleased
+* Upgrade `geozero` from 0.9 to 0.11.
 
 ## 0.6.1 - 2023-07-24
 * Upgrade `geozero` from 0.9 to 0.10.
