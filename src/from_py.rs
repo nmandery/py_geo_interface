@@ -306,7 +306,7 @@ fn extract_polygon<T: PyCoordNum>(obj: &PyAny) -> PyResult<Polygon<T>> {
 }
 
 fn extract_dict_value<'a>(dict: &'a PyDict, key: &PyString) -> PyResult<&'a PyAny> {
-    if let Some(value) = dict.get_item(key) {
+    if let Some(value) = dict.get_item(key)? {
         Ok(value)
     } else {
         Err(PyValueError::new_err(format!(
