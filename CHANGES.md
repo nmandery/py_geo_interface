@@ -1,6 +1,8 @@
 # Changes
 
 ## Unreleased
+
+## 0.7.0 - 2023-10-12
 * Upgrade `pyo3` from 0.19 to 0.20.
 
 ## 0.6.2 - 2023-10-03
