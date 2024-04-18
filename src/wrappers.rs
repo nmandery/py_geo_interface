@@ -22,15 +22,15 @@ macro_rules! dt_mod {
 
                 #[cfg(feature = "wkb")]
                 #[getter]
-                fn wkb<'py>(&self, py: Python<'py>) -> PyResult<&'py pyo3::types::PyBytes> {
+                fn wkb<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, pyo3::types::PyBytes>> {
                     use crate::wkb::WKBSupport;
                     let wkb_bytes = <$coord_type>::geometry_to_wkb(&self.0)?;
-                    Ok(pyo3::types::PyBytes::new(py, &wkb_bytes))
+                    Ok(pyo3::types::PyBytes::new_bound(py, &wkb_bytes))
                 }
             }
 
             impl<'source> FromPyObject<'source> for Geometry {
-                fn extract(ob: &'source PyAny) -> PyResult<Self> {
+                fn extract_bound(ob: &Bound<'source, PyAny>) -> PyResult<Self> {
                     Ok(Self(ob.as_geometry()?))
                 }
             }

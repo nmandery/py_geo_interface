@@ -39,7 +39,7 @@ geo-types = "0.7"
 num-traits = "0.2"
 
 [dependencies.pyo3]
-version = "0.20"
+version = "0.21"
 features = [
     #"abi3"
 ]

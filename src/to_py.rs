@@ -3,7 +3,8 @@ use geo_types::{
     Coord, Geometry, GeometryCollection, Line, LineString, MultiLineString, MultiPoint,
     MultiPolygon, Point, Polygon,
 };
-use pyo3::types::{PyDict, PyList, PyString, PyTuple};
+use pyo3::prelude::PyDictMethods;
+use pyo3::types::{PyDict, PyList, PyTuple};
 use pyo3::{intern, PyObject, PyResult, Python, ToPyObject};
 use std::borrow::Borrow;
 use std::iter::once;
@@ -82,7 +83,7 @@ where
         make_geom_pyobject(
             py,
             intern!(py, "MultiLineString"),
-            PyTuple::new(py, linestrings).to_object(py),
+            PyTuple::new_bound(py, linestrings).to_object(py),
         )
     }
 }
@@ -95,7 +96,7 @@ where
         make_geom_pyobject(
             py,
             intern!(py, "LineString"),
-            PyTuple::new(py, [self.start.to_py(py), self.end.to_py(py)]).to_object(py),
+            PyTuple::new_bound(py, [self.start.to_py(py), self.end.to_py(py)]).to_object(py),
         )
     }
 }
@@ -112,7 +113,7 @@ where
                 .map(|ls| coord_iter_to_py(ls.coords(), py)),
         )
         .collect();
-    PyTuple::new(py, linestring_objs).to_object(py)
+    PyTuple::new_bound(py, linestring_objs).to_object(py)
 }
 
 impl<T> AsGeoInterface for Polygon<T>
@@ -142,17 +143,16 @@ where
         make_geom_pyobject(
             py,
             intern!(py, "MultiPolygon"),
-            PyTuple::new(py, polygons).to_object(py),
+            PyTuple::new_bound(py, polygons).to_object(py),
         )
     }
 }
 
-fn make_geom_pyobject<'py>(
-    py: Python<'py>,
-    geom_type: &'py PyString,
-    coordinates: PyObject,
-) -> PyResult<PyObject> {
-    let dict = PyDict::new(py);
+fn make_geom_pyobject<T>(py: Python, geom_type: T, coordinates: PyObject) -> PyResult<PyObject>
+where
+    T: ToPyObject,
+{
+    let dict = PyDict::new_bound(py);
     dict.set_item(intern!(py, "type"), geom_type)?;
     dict.set_item(intern!(py, "coordinates"), coordinates)?;
     Ok(dict.to_object(py))
@@ -163,7 +163,7 @@ where
     T: PyCoordNum,
 {
     fn as_geointerface_pyobject(&self, py: Python) -> PyResult<PyObject> {
-        let dict = PyDict::new(py);
+        let dict = PyDict::new_bound(py);
         dict.set_item(intern!(py, "type"), intern!(py, "GeometryCollection"))?;
 
         // Remove vec allocation? Only used to have an ExactSizeIterator
@@ -172,7 +172,10 @@ where
             .map(|geom| geom.as_geointerface_pyobject(py))
             .collect::<PyResult<Vec<_>>>()?;
 
-        dict.set_item(intern!(py, "geometries"), PyTuple::new(py, geometries))?;
+        dict.set_item(
+            intern!(py, "geometries"),
+            PyTuple::new_bound(py, geometries),
+        )?;
         Ok(dict.to_object(py))
     }
 }
@@ -186,7 +189,7 @@ where
     // Remove vec allocation? Only used to have an ExactSizeIterator
     let elements: Vec<_> = iter.map(|coord| coord.borrow().to_py(py)).collect();
 
-    PyTuple::new(py, elements).to_object(py)
+    PyTuple::new_bound(py, elements).to_object(py)
 }
 
 trait ToPy {
@@ -198,7 +201,7 @@ where
     T: PyCoordNum,
 {
     fn to_py(&self, py: Python) -> PyObject {
-        PyTuple::new(py, &[self.x.into_py(py), self.y.into_py(py)]).to_object(py)
+        PyTuple::new_bound(py, &[self.x.into_py(py), self.y.into_py(py)]).to_object(py)
     }
 }
 
@@ -207,7 +210,7 @@ where
     T: PyCoordNum,
 {
     fn to_py(&self, py: Python) -> PyObject {
-        PyTuple::new(py, self.iter().map(|c| c.to_py(py))).to_object(py)
+        PyTuple::new_bound(py, self.iter().map(|c| c.to_py(py))).to_object(py)
     }
 }
 
@@ -225,7 +228,7 @@ where
             .iter()
             .map(|g| g.as_geointerface_pyobject(py))
             .collect::<PyResult<Vec<_>>>()?;
-        Ok(PyList::new(py, geometries).to_object(py))
+        Ok(PyList::new_bound(py, geometries).to_object(py))
     }
 }
 
@@ -248,7 +251,7 @@ where
     T: PyCoordNum,
 {
     fn as_geointerface_featurecollection_pyobject(&self, py: Python) -> PyResult<PyObject> {
-        let featurecollection = PyDict::new(py);
+        let featurecollection = PyDict::new_bound(py);
         featurecollection.set_item(intern!(py, "type"), intern!(py, "FeatureCollection"))?;
 
         let features = self
@@ -275,9 +278,9 @@ fn geom_as_py_feature<T>(py: Python, geom: &Geometry<T>) -> PyResult<PyObject>
 where
     T: PyCoordNum,
 {
-    let feature = PyDict::new(py);
+    let feature = PyDict::new_bound(py);
     feature.set_item(intern!(py, "type"), intern!(py, "Feature"))?;
-    feature.set_item(intern!(py, "properties"), PyDict::new(py))?;
+    feature.set_item(intern!(py, "properties"), PyDict::new_bound(py))?;
     feature.set_item(intern!(py, "geometry"), geom.as_geointerface_pyobject(py)?)?;
     Ok(feature.to_object(py))
 }
@@ -286,6 +289,7 @@ where
 mod tests {
     use crate::wrappers::f64::GeometryVecFc;
     use geo_types::{Geometry as GtGeometry, Point};
+    use pyo3::prelude::PyDictMethods;
     use pyo3::types::PyDict;
     use pyo3::{IntoPy, Python};
 
@@ -298,12 +302,12 @@ mod tests {
         .into();
 
         Python::with_gil(|py| {
-            let locals = PyDict::new(py);
+            let locals = PyDict::new_bound(py);
             locals
                 .set_item("feature_collection", geometries.into_py(py))
                 .unwrap();
 
-            py.run(
+            py.run_bound(
                 r#"
 import geopandas as gpd
 from shapely.geometry import Point
@@ -314,7 +318,7 @@ assert gdf.geometry[0] == Point(1,3)
 assert gdf.geometry[1] == Point(2,6)
             "#,
                 None,
-                Some(locals),
+                Some(&locals),
             )
             .unwrap();
         });
