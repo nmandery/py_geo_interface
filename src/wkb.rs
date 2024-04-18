@@ -2,15 +2,16 @@ use geo_types::{CoordNum, Geometry as GtGeometry};
 use geozero::wkb::{FromWkb, WkbDialect, WkbWriter};
 use geozero::GeozeroGeometry;
 use pyo3::exceptions::{PyNotImplementedError, PyValueError};
+use pyo3::prelude::{PyAnyMethods, PyByteArrayMethods, PyBytesMethods};
 use pyo3::types::{PyByteArray, PyBytes};
-use pyo3::{intern, PyAny, PyResult};
+use pyo3::{intern, Bound, PyAny, PyResult};
 use std::io::Cursor;
 
 pub trait WKBSupport {
     /// attempt to read the geometry from the objects `wkb` property if this exists.
     ///
     /// This supports reading from shapely geometries while skipping the geo_interface
-    fn read_wkb_property(_value: &PyAny) -> PyResult<Option<GtGeometry<Self>>>
+    fn read_wkb_property(_value: &Bound<PyAny>) -> PyResult<Option<GtGeometry<Self>>>
     where
         Self: CoordNum,
     {
@@ -44,7 +45,7 @@ unsupported_wkb_conversion!(i64);
 unsupported_wkb_conversion!(f32);
 
 impl WKBSupport for f64 {
-    fn read_wkb_property(value: &PyAny) -> PyResult<Option<GtGeometry<Self>>> {
+    fn read_wkb_property(value: &Bound<PyAny>) -> PyResult<Option<GtGeometry<Self>>> {
         if let Ok(wkb_attr) = value.getattr(intern!(value.py(), "wkb")) {
             let wkb = if wkb_attr.is_callable() {
                 wkb_attr.call0()?
@@ -85,14 +86,16 @@ mod tests {
     use crate::from_py::AsGeometry;
     use crate::Geometry;
     use geo_types::{Geometry as GtGeometry, Point};
+    use pyo3::prelude::PyDictMethods;
     use pyo3::types::PyDict;
     use pyo3::{IntoPy, Python};
 
     #[test]
     fn geometry_from_shapely_wkb_bytes_property() {
         let geom = Python::with_gil(|py| {
-            py.run(r#"from shapely.geometry import Point"#, None, None)?;
-            py.eval(r#"Point(2.0, 4.0)"#, None, None)?.as_geometry()
+            py.run_bound(r#"from shapely.geometry import Point"#, None, None)?;
+            py.eval_bound(r#"Point(2.0, 4.0)"#, None, None)?
+                .as_geometry()
         })
         .unwrap();
         assert_eq!(geom, GtGeometry::Point(Point::new(2., 4.)));
@@ -101,7 +104,7 @@ mod tests {
     #[test]
     fn geometry_from_wkb_bytearray_property() {
         let geom = Python::with_gil(|py| {
-            py.run(
+            py.run_bound(
                 r#"
 class Something:
     @property
@@ -111,7 +114,7 @@ class Something:
                 None,
                 None,
             )?;
-            py.eval(r#"Something()"#, None, None)?.as_geometry()
+            py.eval_bound(r#"Something()"#, None, None)?.as_geometry()
         })
         .unwrap();
         assert_eq!(geom, GtGeometry::Point(Point::new(2., 4.)));
@@ -121,16 +124,16 @@ class Something:
     fn geometryinterface_wkb_property() {
         Python::with_gil(|py| {
             let geom: Geometry = Point::new(2.0_f64, 4.0_f64).into();
-            let locals = PyDict::new(py);
+            let locals = PyDict::new_bound(py);
             locals.set_item("geom", geom.into_py(py)).unwrap();
 
-            py.run(
+            py.run_bound(
                 r#"
 from shapely.geometry import Point
 Point(2.0, 4.0).wkb == geom.wkb
 "#,
                 None,
-                Some(locals),
+                Some(&locals),
             )
             .unwrap();
         });
