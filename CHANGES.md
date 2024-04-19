@@ -1,6 +1,7 @@
 # Changes
 
 ## Unreleased
+## 0.8.0 - 2024-04-19
 * Upgrade `geozero` from 0.11 to 0.12.
 * Upgrade `pyo3` from 0.20 to 0.21 and switch to new `Bound` API.
 
