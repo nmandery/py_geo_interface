@@ -85,8 +85,8 @@ macro_rules! dt_mod {
                 }
             }
 
-            impl<'source> FromPyObject<'source> for GeometryVec {
-                fn extract(ob: &'source PyAny) -> PyResult<Self> {
+            impl FromPyObject<'_> for GeometryVec {
+                fn extract_bound(ob: &Bound<'_, PyAny>) -> PyResult<Self> {
                     ob.as_geometry_vec()
                 }
             }
@@ -108,9 +108,9 @@ macro_rules! dt_mod {
                 fn as_geometry_vec(&self) -> PyResult<GeometryVec>;
             }
 
-            impl AsGeometryVec for PyAny {
+            impl AsGeometryVec for Bound<'_, PyAny> {
                 fn as_geometry_vec(&self) -> PyResult<GeometryVec> {
-                    GeometryVec::extract(self)
+                    GeometryVec::extract_bound(self)
                 }
             }
 
@@ -129,8 +129,8 @@ macro_rules! dt_mod {
                 }
             }
 
-            impl<'source> FromPyObject<'source> for GeometryVecFc {
-                fn extract(ob: &'source PyAny) -> PyResult<Self> {
+            impl FromPyObject<'_> for GeometryVecFc {
+                fn extract_bound(ob: &Bound<'_, PyAny>) -> PyResult<Self> {
                     ob.as_geometry_vec_fc()
                 }
             }
@@ -152,9 +152,9 @@ macro_rules! dt_mod {
                 fn as_geometry_vec_fc(&self) -> PyResult<GeometryVecFc>;
             }
 
-            impl AsGeometryVecFc for PyAny {
+            impl AsGeometryVecFc for Bound<'_, PyAny> {
                 fn as_geometry_vec_fc(&self) -> PyResult<GeometryVecFc> {
-                    GeometryVecFc::extract(self)
+                    GeometryVecFc::extract_bound(self)
                 }
             }
         }

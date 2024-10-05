@@ -39,13 +39,13 @@ geo-types = "0.7"
 num-traits = "0.2"
 
 [dependencies.pyo3]
-version = "0.21"
+version = "0.22"
 features = [
     #"abi3"
 ]
 
 [dependencies.geozero]
-version = "0.12"
+version = "0.14"
 default-features = false
 features = ["with-geo", "with-wkb"]
 optional = true
