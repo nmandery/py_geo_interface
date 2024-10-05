@@ -670,7 +670,9 @@ class Something:
             py.run_bound(
                 r#"
 import geopandas as gpd
-world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
+import os
+from pathlib import Path
+world = gpd.read_file(Path(os.environ['CARGO_MANIFEST_DIR']) / 'data/ne_110m_land.fgb')
         "#,
                 None,
                 None,

@@ -25,6 +25,8 @@
 //! ```rust
 //! use geo_types::{Geometry as GtGeometry, Point};
 //! use pyo3::{prepare_freethreaded_python, Python};
+//! use pyo3::types::PyDictMethods;
+//! use pyo3::types::PyAnyMethods;
 //! use py_geo_interface::Geometry;
 //!
 //! prepare_freethreaded_python();
@@ -33,7 +35,7 @@
 //!
 //!     // Define a python class implementing the geo_interface. This could also be a shapely or geojson
 //!     // object instead. These provide the same interface.
-//!     py.run(r#"
+//!     py.run_bound(r#"
 //! class Something:
 //!     @property
 //!     def __geo_interface__(self):
@@ -41,7 +43,7 @@
 //! "#, None, None).unwrap();
 //!
 //!     // create an instance of the class and extract the geometry
-//!     py.eval(r#"Something()"#, None, None)?.extract::<Geometry>()
+//!     py.eval_bound(r#"Something()"#, None, None)?.extract::<Geometry>()
 //! }).unwrap();
 //! assert_eq!(geom.0, GtGeometry::Point(Point::new(5.0_f64, 3.0_f64)));
 //! ```
@@ -51,7 +53,7 @@
 //! ```rust
 //! use geo_types::{Geometry as GtGeometry, Point};
 //! use pyo3::{prepare_freethreaded_python, Python};
-//! use pyo3::types::{PyDict, PyTuple};
+//! use pyo3::types::{PyDict, PyTuple, PyDictMethods};
 //! use pyo3::IntoPy;
 //! use py_geo_interface::Geometry;
 //!
@@ -60,13 +62,13 @@
 //! Python::with_gil(|py| {
 //!
 //!     let geom: Geometry = Point::new(10.6_f64, 23.3_f64).into();
-//!     let mut locals = PyDict::new(py);
+//!     let mut locals = PyDict::new_bound(py);
 //!     locals.set_item("geom", geom.into_py(py)).unwrap();
 //!
-//!     py.run(r#"
+//!     py.run_bound(r#"
 //! assert geom.__geo_interface__["type"] == "Point"
 //! assert geom.__geo_interface__["coordinates"] == (10.6, 23.3)
-//! "#, None, Some(locals)).unwrap();
+//! "#, None, Some(&locals)).unwrap();
 //! });
 //! ```
 
