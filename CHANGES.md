@@ -2,29 +2,36 @@
 
 ## Unreleased
 
-* Upgrade `pyo3` from 0.21 to 0.22 and `geozero` from 0.12 to 0.14.
+* Upgrade `pyo3` from 0.21 to 0.29 and `geozero` from 0.12 to 0.15.
 
 ## 0.8.0 - 2024-04-19
+
 * Upgrade `geozero` from 0.11 to 0.12.
 * Upgrade `pyo3` from 0.20 to 0.21 and switch to new `Bound` API.
 
 ## 0.7.0 - 2023-10-12
+
 * Upgrade `pyo3` from 0.19 to 0.20.
 
 ## 0.6.2 - 2023-10-03
+
 * Upgrade `geozero` from 0.9 to 0.11.
 
 ## 0.6.1 - 2023-07-24
+
 * Upgrade `geozero` from 0.9 to 0.10.
 * Do not access inner members of `geo_types` types. Only use the provided methods.
 
 ## 0.6.0 - 2023-06-10
+
 * Upgrade `pyo3` from 0.18 to 0.19.
 
 ## 0.5.0 - 2023-01-19
+
 * Upgrade `pyo3` from 0.17 to 0.18.
 
 ## 0.4.1 - 2022-11-30
+
 * Fix deprecation warnings of `geo_types::Coordinate` by migrating to `geo_types::Coord`.
 
 ## 0.4.0
@@ -38,7 +45,8 @@
 * Support exchanging geometries using Well-Known-Binary format. The `wkb`-property of `shapely`
   geometries will be used. Additionally, the `GeometryInterface`-type exposed to python will have a `wkb`-property
   itself. This is only supported for the `f64` variant of the `GeoInterface`.
-* Rename `GeoInterface` struct to `GeometryInterface` to distinguish the provided geometry support from geo_interface features and featurecollections.
+* Rename `GeoInterface` struct to `GeometryInterface` to distinguish the provided geometry support from geo_interface
+  features and featurecollections.
 * Simplify lifetimes and rename `AsGeoInterfacePyDict` to `AsGeoInterface`.
 
 ## 0.2.0

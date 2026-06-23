@@ -16,7 +16,7 @@ macro_rules! dt_mod {
             #[pymethods]
             impl Geometry {
                 #[getter]
-                fn __geo_interface__(&self, py: Python) -> PyResult<PyObject> {
+                fn __geo_interface__<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
                     self.0.as_geointerface_pyobject(py)
                 }
 
@@ -25,12 +25,14 @@ macro_rules! dt_mod {
                 fn wkb<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, pyo3::types::PyBytes>> {
                     use crate::wkb::WKBSupport;
                     let wkb_bytes = <$coord_type>::geometry_to_wkb(&self.0)?;
-                    Ok(pyo3::types::PyBytes::new_bound(py, &wkb_bytes))
+                    Ok(pyo3::types::PyBytes::new(py, &wkb_bytes))
                 }
             }
 
-            impl<'source> FromPyObject<'source> for Geometry {
-                fn extract_bound(ob: &Bound<'source, PyAny>) -> PyResult<Self> {
+            impl<'a, 'py> FromPyObject<'a, 'py> for Geometry {
+                type Error = PyErr;
+
+                fn extract(ob: pyo3::Borrowed<'a, 'py, PyAny>) -> PyResult<Self> {
                     Ok(Self(ob.as_geometry()?))
                 }
             }
@@ -80,13 +82,15 @@ macro_rules! dt_mod {
             #[pymethods]
             impl GeometryVec {
                 #[getter]
-                fn __geo_interface__(&self, py: Python) -> PyResult<PyObject> {
+                fn __geo_interface__<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
                     self.0.as_geointerface_list_pyobject(py)
                 }
             }
 
-            impl FromPyObject<'_> for GeometryVec {
-                fn extract_bound(ob: &Bound<'_, PyAny>) -> PyResult<Self> {
+            impl<'a, 'py> FromPyObject<'a, 'py> for GeometryVec {
+                type Error = PyErr;
+
+                fn extract(ob: pyo3::Borrowed<'a, 'py, PyAny>) -> PyResult<Self> {
                     ob.as_geometry_vec()
                 }
             }
@@ -110,7 +114,7 @@ macro_rules! dt_mod {
 
             impl AsGeometryVec for Bound<'_, PyAny> {
                 fn as_geometry_vec(&self) -> PyResult<GeometryVec> {
-                    GeometryVec::extract_bound(self)
+                    self.extract()
                 }
             }
 
@@ -124,13 +128,15 @@ macro_rules! dt_mod {
             #[pymethods]
             impl GeometryVecFc {
                 #[getter]
-                fn __geo_interface__(&self, py: Python) -> PyResult<PyObject> {
+                fn __geo_interface__<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
                     self.0.as_geointerface_featurecollection_pyobject(py)
                 }
             }
 
-            impl FromPyObject<'_> for GeometryVecFc {
-                fn extract_bound(ob: &Bound<'_, PyAny>) -> PyResult<Self> {
+            impl<'a, 'py> FromPyObject<'a, 'py> for GeometryVecFc {
+                type Error = PyErr;
+
+                fn extract(ob: pyo3::Borrowed<'a, 'py, PyAny>) -> PyResult<Self> {
                     ob.as_geometry_vec_fc()
                 }
             }
@@ -154,7 +160,7 @@ macro_rules! dt_mod {
 
             impl AsGeometryVecFc for Bound<'_, PyAny> {
                 fn as_geometry_vec_fc(&self) -> PyResult<GeometryVecFc> {
-                    GeometryVecFc::extract_bound(self)
+                    self.extract()
                 }
             }
         }

@@ -53,9 +53,9 @@ impl WKBSupport for f64 {
                 wkb_attr
             };
             let slice = if wkb.is_instance_of::<PyBytes>() {
-                wkb.downcast::<PyBytes>()?.as_bytes()
+                wkb.cast::<PyBytes>()?.as_bytes()
             } else if wkb.is_instance_of::<PyByteArray>() {
-                unsafe { wkb.downcast::<PyByteArray>()?.as_bytes() }
+                unsafe { wkb.cast::<PyByteArray>()?.as_bytes() }
             } else {
                 return Ok(None);
             };
@@ -88,13 +88,13 @@ mod tests {
     use geo_types::{Geometry as GtGeometry, Point};
     use pyo3::prelude::PyDictMethods;
     use pyo3::types::PyDict;
-    use pyo3::{IntoPy, Python};
+    use pyo3::{Python};
 
     #[test]
     fn geometry_from_shapely_wkb_bytes_property() {
-        let geom = Python::with_gil(|py| {
-            py.run_bound(r#"from shapely.geometry import Point"#, None, None)?;
-            py.eval_bound(r#"Point(2.0, 4.0)"#, None, None)?
+        let geom = Python::attach(|py| {
+            py.run(c"from shapely.geometry import Point", None, None)?;
+            py.eval(c"Point(2.0, 4.0)", None, None)?
                 .as_geometry()
         })
         .unwrap();
@@ -103,18 +103,17 @@ mod tests {
 
     #[test]
     fn geometry_from_wkb_bytearray_property() {
-        let geom = Python::with_gil(|py| {
-            py.run_bound(
-                r#"
+        let geom = Python::attach(|py| {
+            py.run(
+                c"
 class Something:
     @property
     def wkb(self):
-        return bytearray.fromhex("000000000140000000000000004010000000000000")
-            "#,
+        return bytearray.fromhex(\"000000000140000000000000004010000000000000\")",
                 None,
                 None,
             )?;
-            py.eval_bound(r#"Something()"#, None, None)?.as_geometry()
+            py.eval(c"Something()", None, None)?.as_geometry()
         })
         .unwrap();
         assert_eq!(geom, GtGeometry::Point(Point::new(2., 4.)));
@@ -122,16 +121,16 @@ class Something:
 
     #[test]
     fn geometryinterface_wkb_property() {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let geom: Geometry = Point::new(2.0_f64, 4.0_f64).into();
-            let locals = PyDict::new_bound(py);
-            locals.set_item("geom", geom.into_py(py)).unwrap();
+            let locals = PyDict::new(py);
+            locals.set_item("geom", geom).unwrap();
 
-            py.run_bound(
-                r#"
+            py.run(
+                c"
 from shapely.geometry import Point
 Point(2.0, 4.0).wkb == geom.wkb
-"#,
+",
                 None,
                 Some(&locals),
             )
