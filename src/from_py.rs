@@ -7,9 +7,8 @@ use num_traits::NumCast;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::{PyAnyMethods, PyDictMethods, PyListMethods, PySequenceMethods};
 use pyo3::types::{PyDict, PyFloat, PyInt, PyIterator, PyList, PyString, PyTuple};
-use pyo3::{intern, Bound, PyAny, PyErr, PyResult, ToPyObject};
+use pyo3::{intern, Bound, PyAny, PyErr, PyResult};
 use std::any::type_name;
-use std::fmt::Display;
 
 pub trait AsCoordinate<T: PyCoordNum> {
     /// Creates a `Coordinate<T>` from `self`.
@@ -101,9 +100,9 @@ extract_from_pyint_int!(u64);
 #[inline]
 fn extract_pycoordnum<T: PyCoordNum>(obj: Bound<PyAny>) -> PyResult<T> {
     if obj.is_instance_of::<PyFloat>() {
-        T::extract_from_pyfloat(obj.downcast::<PyFloat>()?)
+        T::extract_from_pyfloat(obj.cast::<PyFloat>()?)
     } else if obj.is_instance_of::<PyInt>() {
-        T::extract_from_pyint(obj.downcast::<PyInt>()?)
+        T::extract_from_pyint(obj.cast::<PyInt>()?)
     } else {
         Err(PyValueError::new_err(
             "coordinate values must be either float or int",
@@ -117,9 +116,9 @@ where
     F: Fn(&Bound<PyTuple>) -> PyResult<O>,
 {
     if obj.is_instance_of::<PyTuple>() {
-        map_fn(obj.downcast::<PyTuple>()?)
+        map_fn(obj.cast::<PyTuple>()?)
     } else if obj.is_instance_of::<PyList>() {
-        map_fn(&(obj.downcast::<PyList>()?.as_sequence().to_tuple()?))
+        map_fn(&(obj.cast::<PyList>()?.as_sequence().to_tuple()?))
     } else {
         Err(PyValueError::new_err("expected either tuple or list"))
     }
@@ -139,7 +138,7 @@ impl<'py, T: PyCoordNum> AsCoordinate<T> for Bound<'py, PyTuple> {
                 self.len()?
             )));
         }
-        let mut tuple_iter = self.iter()?;
+        let mut tuple_iter = self.try_iter()?;
         let x = extract_pycoordnum(tuple_iter.next().unwrap()?)?;
         let y = extract_pycoordnum(tuple_iter.next().unwrap()?)?;
         Ok((x, y).into())
@@ -159,7 +158,7 @@ pub trait AsCoordinateVec<T: PyCoordNum> {
 
 impl<'py, T: PyCoordNum> AsCoordinateVec<T> for Bound<'py, PyTuple> {
     fn as_coordinate_vec(&self) -> PyResult<Vec<Coord<T>>> {
-        self.iter()?
+        self.try_iter()?
             .map(|tuple_result| tuple_result.and_then(|tuple| tuple.as_coordinate()))
             .collect::<PyResult<Vec<_>>>()
     }
@@ -206,19 +205,19 @@ impl<'py, T: PyCoordNum> AsGeometryVec<T> for Bound<'py, PyIterator> {
 
 impl<'py, T: PyCoordNum> AsGeometryVec<T> for Bound<'py, PyAny> {
     fn as_geometry_vec(&self) -> PyResult<Vec<Geometry<T>>> {
-        if let Ok(dict) = self.downcast::<PyDict>() {
+        if let Ok(dict) = self.cast::<PyDict>() {
             // geopandas GeoSeries are exposed to __geo_interface__ as FeatureCollections
-            let features = extract_dict_value(dict, intern!(dict.py(), "features"))?;
+            let features = extract_dict_value(dict, "features")?;
             let mut geometries = vec![];
-            for feature in features.iter()? {
+            for feature in features.try_iter()? {
                 let feature = feature?;
-                let feature_dict = feature.downcast::<PyDict>()?;
-                let geometry = extract_dict_value(feature_dict, intern!(feature.py(), "geometry"))?;
+                let feature_dict = feature.cast::<PyDict>()?;
+                let geometry = extract_dict_value(feature_dict, "geometry")?;
                 geometries.push(geometry.as_geometry()?)
             }
             Ok(geometries)
         } else {
-            self.iter()?.as_geometry_vec()
+            self.try_iter()?.as_geometry_vec()
         }
     }
 }
@@ -237,10 +236,10 @@ fn extract_geometry<T: PyCoordNum>(dict: &Bound<PyDict>, level: u8) -> PyResult<
     if level > 1 {
         Err(PyValueError::new_err("recursion level exceeded"))
     } else {
-        let geom_type = extract_dict_value(dict, intern!(dict.py(), "type"))?
-            .downcast::<PyString>()?
+        let geom_type = extract_dict_value(dict, "type")?
+            .cast::<PyString>()?
             .extract::<String>()?;
-        let coordinates = || extract_dict_value(dict, intern!(dict.py(), "coordinates"));
+        let coordinates = || extract_dict_value(dict, "coordinates");
         match geom_type.as_str() {
             "Point" => Ok(Geometry::from(Point::from(coordinates()?.as_coordinate()?))),
             "MultiPoint" => Ok(Geometry::from(MultiPoint::from(
@@ -261,20 +260,20 @@ fn extract_geometry<T: PyCoordNum>(dict: &Bound<PyDict>, level: u8) -> PyResult<
                 &coordinates()?,
                 |tuple| {
                     tuple
-                        .iter()?
+                        .try_iter()?
                         .map(|any| any.and_then(|any| extract_polygon(&any)))
                         .collect::<PyResult<Vec<_>>>()
                 },
             )?))),
             "GeometryCollection" => {
                 let geoms = tuple_map(
-                    &extract_dict_value(dict, intern!(dict.py(), "geometries"))?,
+                    &extract_dict_value(dict, "geometries")?,
                     |tuple| {
                         tuple
-                            .iter()?
+                            .try_iter()?
                             .map(|obj| {
                                 obj.and_then(|obj| {
-                                    obj.downcast::<PyDict>()
+                                    obj.cast::<PyDict>()
                                         .map_err(PyErr::from)
                                         .and_then(|obj_dict| extract_geometry(obj_dict, level + 1))
                                 })
@@ -297,7 +296,7 @@ fn extract_geometry<T: PyCoordNum>(dict: &Bound<PyDict>, level: u8) -> PyResult<
 fn extract_linestrings<T: PyCoordNum>(obj: &Bound<PyAny>) -> PyResult<Vec<LineString<T>>> {
     tuple_map(obj, |tuple| {
         tuple
-            .iter()?
+            .try_iter()?
             .map(|t| t.and_then(|t| tuple_map(&t, |t| t.as_coordinate_vec().map(LineString::new))))
             .collect::<PyResult<Vec<_>>>()
     })
@@ -312,10 +311,7 @@ fn extract_polygon<T: PyCoordNum>(obj: &Bound<PyAny>) -> PyResult<Polygon<T>> {
     Ok(Polygon::new(exterior, linestings))
 }
 
-fn extract_dict_value<'py, T>(dict: &Bound<'py, PyDict>, key: T) -> PyResult<Bound<'py, PyAny>>
-where
-    T: ToPyObject + Display + Copy,
-{
+fn extract_dict_value<'py>(dict: &Bound<'py, PyDict>, key: &str) -> PyResult<Bound<'py, PyAny>> {
     if let Some(value) = dict.get_item(key)? {
         Ok(value)
     } else {
@@ -337,7 +333,7 @@ impl<'py, T: PyCoordNum> AsGeometry<T> for Bound<'py, PyAny> {
             Ok(geom)
         } else {
             // fallback and attempt to access as dict
-            self.downcast::<PyDict>()?.as_geometry()
+            self.cast::<PyDict>()?.as_geometry()
         }
     }
 }
@@ -350,7 +346,7 @@ fn read_geointerface<T: PyCoordNum>(value: &Bound<PyAny>) -> PyResult<Option<Geo
         } else {
             geo_interface
         }
-        .downcast::<PyDict>()?
+        .cast::<PyDict>()?
         .as_geometry()?;
         Ok(Some(geom))
     } else {
@@ -373,8 +369,8 @@ mod tests {
 
     #[test]
     fn coordinate_from_pytuple() {
-        Python::with_gil(|py| {
-            let tuple = py.eval_bound("(1.0, 2.0)", None, None).unwrap();
+        Python::attach(|py| {
+            let tuple = py.eval(c"(1.0, 2.0)", None, None).unwrap();
             let c: Coord<f64> = tuple.as_coordinate().unwrap();
             assert_eq!(c.x, 1.0);
             assert_eq!(c.y, 2.0);
@@ -383,8 +379,8 @@ mod tests {
 
     #[test]
     fn coordinate_from_pytuple_cast_ints() {
-        Python::with_gil(|py| {
-            let tuple = py.eval_bound("(1, 2)", None, None).unwrap();
+        Python::attach(|py| {
+            let tuple = py.eval(c"(1, 2)", None, None).unwrap();
             let c: Coord<f64> = tuple.as_coordinate().unwrap();
             assert_eq!(c.x, 1.0);
             assert_eq!(c.y, 2.0);
@@ -393,8 +389,8 @@ mod tests {
 
     #[test]
     fn coordinate_from_pytuple_to_ints() {
-        Python::with_gil(|py| {
-            let tuple = py.eval_bound("(1, 2)", None, None).unwrap();
+        Python::attach(|py| {
+            let tuple = py.eval(c"(1, 2)", None, None).unwrap();
             let c: Coord<i32> = tuple.as_coordinate().unwrap();
             assert_eq!(c.x, 1);
             assert_eq!(c.y, 2);
@@ -403,8 +399,8 @@ mod tests {
 
     #[test]
     fn coordinate_from_pylist() {
-        Python::with_gil(|py| {
-            let list = py.eval_bound("[1.0, 2.0]", None, None).unwrap();
+        Python::attach(|py| {
+            let list = py.eval(c"[1.0, 2.0]", None, None).unwrap();
             let c: Coord<f64> = list.as_coordinate().unwrap();
             assert_eq!(c.x, 1.0);
             assert_eq!(c.y, 2.0);
@@ -413,9 +409,9 @@ mod tests {
 
     #[test]
     fn coordinate_sequence_from_pylist() {
-        Python::with_gil(|py| {
+        Python::attach(|py| {
             let list = py
-                .eval_bound("[[1.0, 2.0], (3.0, 4.)]", None, None)
+                .eval(c"[[1.0, 2.0], (3.0, 4.)]", None, None)
                 .unwrap();
             let coords: Vec<Coord<f64>> = list.as_coordinate_vec().unwrap();
             assert_eq!(coords.len(), 2);
@@ -427,11 +423,11 @@ mod tests {
     }
 
     fn parse_geojson_geometry(geojson_str: &str) -> PyResult<Geometry<f64>> {
-        Python::with_gil(|py| {
-            let locals = PyDict::new_bound(py);
-            locals.set_item("gj", PyString::new_bound(py, geojson_str))?;
-            py.run_bound(r#"import json"#, None, Some(&locals))?;
-            py.eval_bound(r#"json.loads(gj)"#, None, Some(&locals))?
+        Python::attach(|py| {
+            let locals = PyDict::new(py);
+            locals.set_item("gj", PyString::new(py, geojson_str))?;
+            py.run(c"import json", None, Some(&locals))?;
+            py.eval(c"json.loads(gj)", None, Some(&locals))?
                 .as_geometry()
         })
     }
@@ -647,18 +643,18 @@ mod tests {
 
     #[test]
     fn read_point_using_geointerface() {
-        let geom = Python::with_gil(|py| {
-            py.run_bound(
-                r#"
+        let geom = Python::attach(|py| {
+            py.run(
+                c"
 class Something:
     @property
     def __geo_interface__(self):
-        return {"type": "Point", "coordinates": [5., 3.]}
-            "#,
+        return {\"type\": \"Point\", \"coordinates\": [5., 3.]}
+            ",
                 None,
                 None,
             )?;
-            py.eval_bound(r#"Something()"#, None, None)?.as_geometry()
+            py.eval(c"Something()", None, None)?.as_geometry()
         })
         .unwrap();
         assert_eq!(geom, Geometry::Point(Point::new(5., 3.)));
@@ -666,18 +662,18 @@ class Something:
 
     #[test]
     fn geometries_from_geopandas_geoseries() {
-        let geometries: Vec<Geometry<f64>> = Python::with_gil(|py| {
-            py.run_bound(
-                r#"
+        let geometries: Vec<Geometry<f64>> = Python::attach(|py| {
+            py.run(
+                c"
 import geopandas as gpd
 import os
 from pathlib import Path
 world = gpd.read_file(Path(os.environ['CARGO_MANIFEST_DIR']) / 'data/ne_110m_land.fgb')
-        "#,
+        ",
                 None,
                 None,
             )?;
-            py.eval_bound(r#"world.geometry"#, None, None)?
+            py.eval(c"world.geometry", None, None)?
                 .as_geometry_vec()
         })
         .unwrap();
